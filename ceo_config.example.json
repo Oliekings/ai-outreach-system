@@ -1,0 +1,50 @@
+{
+    "owner": {
+        "name": "Your Name",
+        "whatsapp": "+2340000000000",
+        "review_deadline_hours": 12,
+        "autonomous_fallback": true,
+        "autonomous_min_score": 7
+    },
+    "outreach": {
+        "cities": [
+            "Your City"
+        ],
+        "niches": [
+            "all"
+        ],
+        "daily_email_limit": 10,
+        "daily_whatsapp_limit": 20,
+        "daily_instagram_limit": 5,
+        "daily_facebook_limit": 10,
+        "send_days": [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday"
+        ],
+        "send_hours": {
+            "start": 9,
+            "end": 12
+        },
+        "avoid_holidays": true
+    },
+    "quality": {
+        "min_enrichment_score": 4,
+        "min_email_confidence": 50,
+        "require_human_review": true,
+        "autonomous_after_deadline": true
+    },
+    "services": {
+        "basic_website_ngn": 250000,
+        "full_package_ngn": 350000,
+        "monthly_retainer_ngn": 150000,
+        "whatsapp_setup_ngn": 100000,
+        "seo_setup_ngn": 150000
+    },
+    "brevo": {
+        "from_name": "Your Name",
+        "from_email": "your_email@example.com",
+        "reply_to": "your_email@example.com"
+    }
+}
