@@ -32,7 +32,7 @@ def get_ai_response(prompt: str, max_tokens: int = 1000) -> str:
     try:
         claude = Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
         response = claude.messages.create(
-            model="claude-opus-4-5",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -991,10 +991,60 @@ async def audit_all_leads(leads_file: str = "results/leads/enriched_leads.json")
         )
         context = await browser.new_context(
             viewport={"width": 1366, "height": 768},
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             locale="en-GB",
             timezone_id="Africa/Lagos"
         )
+
+        # Mask automation signals with advanced stealth script
+        await context.add_init_script("""
+            // 1. Hide webdriver
+            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            
+            // 2. Add full chrome object
+            window.chrome = {
+                app: {
+                    isInstalled: false,
+                    InstallState: { DISABLED: 'DISABLED', INSTALLED: 'INSTALLED', NOT_INSTALLED: 'NOT_INSTALLED' },
+                    RunningState: { CANNOT_RUN: 'CANNOT_RUN', RUNNING: 'RUNNING', CAN_RUN: 'CAN_RUN' }
+                },
+                csi: () => {},
+                loadTimes: () => {},
+                runtime: {
+                    OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' },
+                    OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },
+                    PlatformArch: { ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+                    PlatformNaclArch: { ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+                    PlatformOs: { ANDROID: 'android', CROS: 'cros', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win' },
+                    RequestUpdateCheckStatus: { NO_UPDATE: 'no_update', THROTTLED: 'throttled', UPDATE_AVAILABLE: 'update_available' }
+                }
+            };
+
+            // 3. Spoof plugins
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => [
+                    { description: "Portable Document Format", filename: "internal-pdf-viewer", name: "Chrome PDF Viewer" },
+                    { description: "", filename: "mhjfbmdgcfjbbpaeojofohoefgieoano", name: "Chromium PDF Viewer" },
+                    { description: "", filename: "internal-pdf-viewer", name: "Microsoft Edge PDF Viewer" },
+                    { description: "", filename: "internal-pdf-viewer", name: "PDF Viewer" },
+                    { description: "", filename: "internal-pdf-viewer", name: "WebKit built-in PDF" }
+                ]
+            });
+
+            // 4. Spoof permissions
+            if (window.navigator.permissions) {
+                const originalQuery = window.navigator.permissions.query;
+                window.navigator.permissions.query = (parameters) => (
+                    parameters.name === 'notifications' ?
+                        Promise.resolve({ state: Notification.permission }) :
+                        originalQuery(parameters)
+                );
+            }
+
+            // 5. Hardware concurrency and memory
+            Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
+            Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
+        """)
         page = await context.new_page()
 
         for i, lead in enumerate(leads, 1):
@@ -1015,7 +1065,7 @@ async def audit_all_leads(leads_file: str = "results/leads/enriched_leads.json")
 
             # 2. Google Business
             print(f"\n   📍 Google Business Profile Audit...")
-            audits["google_business"] = await audit_google_business(page, name, "Abuja")
+            audits["google_business"] = await audit_google_business(page, name, lead.get("city", "Abuja"))
             print(f"      Grade: {audits['google_business']['grade']} | Rating: {audits['google_business'].get('rating')}")
             await human_pause(3.0, 5.0)
 
@@ -1033,7 +1083,7 @@ async def audit_all_leads(leads_file: str = "results/leads/enriched_leads.json")
 
             # 5. SEO
             print(f"\n   🔍 SEO Audit...")
-            audits["seo"] = await audit_seo(page, name, "Abuja", website_url)
+            audits["seo"] = await audit_seo(page, name, lead.get("city", "Abuja"), website_url)
             print(f"      Grade: {audits['seo']['grade']} | Local pack: {audits['seo']['ranks_in_local_pack']}")
             await human_pause(3.0, 5.0)
 

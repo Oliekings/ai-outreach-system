@@ -21,7 +21,7 @@ def get_ai_response(prompt: str, max_tokens: int = 1500, retry: int = 3) -> str:
         try:
             claude = Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
             response = claude.messages.create(
-                model="claude-opus-4-5",
+                model="claude-3-5-sonnet-20241022",
                 max_tokens=max_tokens,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -225,6 +225,7 @@ def build_lead_context(lead: dict) -> dict:
         "best_send_time": best_time,
         "rating": lead.get("rating"),
         "reviews": lead.get("reviews"),
+        "city": lead.get("city", "Abuja")
     }
 
 
@@ -255,7 +256,7 @@ def write_emails(ctx: dict) -> dict:
         issues_text = "• No website found — customers searching online can't find you\n• No online booking system\n• No WhatsApp button for easy contact\n• Missing from key digital directories"
 
     prompt_email1 = f"""
-You are writing the FIRST ever email from a digital consultant to a business owner in Abuja, Nigeria.
+You are writing the FIRST ever email from a digital consultant to a business owner in {ctx.get('city', 'Abuja')}, Nigeria.
 
 Business: {business}
 Owner first name: {ctx['first_name'] or 'there'}
@@ -398,7 +399,7 @@ def write_whatsapp_messages(ctx: dict) -> dict:
     biggest_opportunity = ctx["biggest_opportunity"]
 
     prompt_wa1 = f"""
-Write a first WhatsApp message to a business owner in Abuja, Nigeria.
+Write a first WhatsApp message to a business owner in {ctx.get('city', 'Abuja')}, Nigeria.
 
 Business: {business}
 Owner first name: {first_name}
@@ -514,7 +515,7 @@ def write_instagram_dms(ctx: dict) -> dict:
     has_website = ctx["has_website"]
 
     prompt_ig1 = f"""
-Write a first Instagram DM to a business owner in Abuja, Nigeria.
+Write a first Instagram DM to a business owner in {ctx.get('city', 'Abuja')}, Nigeria.
 
 Business: {business}
 Owner first name: {first_name}
@@ -603,7 +604,7 @@ def write_facebook_messages(ctx: dict) -> dict:
     revenue_hook = ctx["revenue_hook"]
 
     prompt_fb1 = f"""
-Write a first Facebook page message to a business owner in Abuja, Nigeria.
+Write a first Facebook page message to a business owner in {ctx.get('city', 'Abuja')}, Nigeria.
 
 Business: {business}
 Owner first name: {first_name}

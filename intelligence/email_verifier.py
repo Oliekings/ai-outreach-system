@@ -119,7 +119,7 @@ def get_ai_response(prompt: str, max_tokens: int = 500) -> str:
     try:
         claude = Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
         response = claude.messages.create(
-            model="claude-opus-4-5",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}]
         )

@@ -2,13 +2,30 @@
 
 An autonomous lead generation and multi-channel outreach system designed for Nigerian businesses. This system finds leads on Google Maps, enriches them with contact details (email, WhatsApp, Instagram, Facebook), audits their digital presence, and writes personalized, AI-driven outreach messages.
 
-## 🚀 Features
+The system is organized into a **5-Layer Modular Architecture** for intelligence, outreach, response management, scaling, and autonomous decision-making.
 
+## 🚀 Features (5-Layer Architecture)
+
+### 1. Intelligence
 - **Lead Finder**: Scrapes Google Maps for specific niches in target cities.
-- **Lead Enricher**: Finds official websites, social media profiles, and contact info using a smart search fallback chain (Google, SerpAPI, DuckDuckGo, Bing).
-- **Email Verifier**: Validates email addresses using DNS MX record checks and SMTP handshakes.
-- **General Auditor**: Performs deep audits of websites, Google Business Profiles, social media, and SEO.
-- **Message Writer**: Generates personalized outreach sequences for Email, WhatsApp, Instagram, and Facebook using Claude 4.5 and Llama 3.3.
+- **Lead Enricher**: Deep search and contact extraction with a smart search fallback chain.
+- **Auditors**: Deep audits of websites, Google Business Profiles, and SEO.
+- **Email Verifier**: Technical validation of emails via MX and SMTP.
+
+### 2. Outreach
+- **Message Writer**: Generates personalized sequences for Email, WhatsApp, Instagram, and Facebook.
+- **Senders**: Multi-channel sending via Brevo (Email), WhatsApp Web, Instagram, and Facebook.
+- **Sample Site Builder**: Builds personalized landing pages for leads.
+
+### 3. Response Management
+- **Reply Monitor**: Watches inboxes for incoming leads.
+- **Reply Handler**: AI-driven reply drafting and nurture management.
+
+### 4. AI CEO
+- Autonomous decision engine, scheduling, and high-level system auditing.
+
+### 5. Scale
+- Niche and city management to scale outreach across Nigeria.
 
 ## 🛠️ Setup
 
@@ -25,43 +42,40 @@ playwright install chromium
 
 ### 3. Configuration
 - Copy `.env.example` to `.env` and fill in your API keys (Anthropic, Groq, SerpAPI, Brevo).
-- Copy `ceo_config.example.json` to `ceo_config.json` and customize your outreach settings, service pricing, and owner details.
+- Copy `ceo_config.example.json` to `ceo_config.json` and customize your settings.
 
 ## 📈 Usage
 
-The system is designed to be run in stages:
+The system uses a modular Python structure. Run modules from the project root:
 
-1. **Find Leads**:
+1. **Intelligence Phase**:
    ```bash
-   python lead_finder.py
-   ```
-2. **Enrich Leads**:
-   ```bash
-   python lead_enricher.py
-   ```
-3. **Verify Emails**:
-   ```bash
-   python email_verifier.py
-   ```
-4. **Audit and Write Messages**:
-   ```bash
-   python general_auditor.py
-   python message_writer.py
+   python -m intelligence.lead_finder
+   python -m intelligence.lead_enricher
+   python -m intelligence.email_verifier
    ```
 
-Alternatively, you can use the `run` script (Windows):
-```bash
-./run
-```
+2. **Outreach Phase**:
+   ```bash
+   python -m intelligence.general_auditor
+   python -m outreach.message_writer
+   ```
+
+3. **Response Management**:
+   ```bash
+   python -m response_management.reply_monitor
+   python -m response_management.reply_handler --report
+   ```
 
 ## 📂 Project Structure
-- `lead_finder.py`: Initial discovery via Google Maps.
-- `lead_enricher.py`: Deep search and contact extraction.
-- `email_verifier.py`: Technical verification of found emails.
-- `general_auditor.py`: Detailed business and digital audit.
-- `message_writer.py`: AI-driven personalized message generation.
+
+- `intelligence/`: Discovery and research scripts.
+- `outreach/`: Message generation and sending logic.
+- `response_management/`: Inbox monitoring and reply handling.
+- `ai_ceo/`: Autonomous scheduling and dashboard.
+- `scale/`: Campaign and niche scaling logic.
 - `ceo_config.json`: Global settings and business logic.
-- `results/`: Output directory for leads, audits, and messages (excluded from Git).
+- `results/`: Output directory (excluded from Git).
 
 ## 🛡️ Security
 - Never commit your `.env` or `ceo_config.json` files.
