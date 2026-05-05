@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 import json
 import os
 import random
@@ -11,7 +11,7 @@ from anthropic import Anthropic
 
 load_dotenv()
 
-# ── Bot detection keywords ────────────────────────────────────────────────────
+# â”€â”€ Bot detection keywords â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 BOT_WALL_SIGNALS = [
     "captcha", "cloudflare", "hcaptcha", "recaptcha",
     "verify you are human", "access denied", "403 forbidden",
@@ -30,13 +30,13 @@ async def try_google_cache(page, url: str) -> str | None:
     """Try to read Google's cached version of a blocked page"""
     try:
         cache_url = f"https://webcache.googleusercontent.com/search?q=cache:{url}"
-        print(f"      🔄 Trying Google cache: {url[:50]}...")
+        print(f"      ðŸ”„ Trying Google cache: {url[:50]}...")
         await page.goto(cache_url, timeout=12000, wait_until="domcontentloaded")
         await handle_consent(page)
         await human_pause(2.0, 3.5)
         text = await page.evaluate("() => document.body.innerText")
         if text and len(text) > 200 and not is_bot_wall(text, cache_url):
-            print(f"      ✅ Cache hit — got content")
+            print(f"      âœ… Cache hit â€” got content")
             return text
     except:
         pass
@@ -60,7 +60,7 @@ async def safe_goto(page, url: str, timeout: int = 15000) -> dict:
     if any(url.lower().endswith(ext) for ext in [
         '.pdf', '.csv', '.xlsx', '.doc', '.docx', '.zip', '.xml'
     ]):
-        print(f"      ⏭️  Skipping non-HTML file: {url[-50:]}")
+        print(f"      â­ï¸  Skipping non-HTML file: {url[-50:]}")
         result["success"] = False
         return result
 
@@ -75,7 +75,7 @@ async def safe_goto(page, url: str, timeout: int = 15000) -> dict:
 
         # Check for bot wall
         if is_bot_wall(text, url):
-            print(f"      🛡️  Bot wall detected — trying cache once...")
+            print(f"      ðŸ›¡ï¸  Bot wall detected â€” trying cache once...")
             result["blocked"] = True
 
             # Try Google cache ONCE only
@@ -86,9 +86,9 @@ async def safe_goto(page, url: str, timeout: int = 15000) -> dict:
                 result["html"] = ""
                 result["source"] = "google_cache"
             else:
-                print(f"      ⚠️  Cache unavailable — skipping")
+                print(f"      âš ï¸  Cache unavailable â€” skipping")
                 result["success"] = False
-            return result  # Always return after bot wall — don't retry
+            return result  # Always return after bot wall â€” don't retry
         else:
             result["success"] = True
             result["text"] = text
@@ -98,11 +98,11 @@ async def safe_goto(page, url: str, timeout: int = 15000) -> dict:
     except Exception as e:
         error = str(e).lower()
         if "timeout" in error:
-            print(f"      ⏱️  Timeout — site too slow, skipping")
+            print(f"      â±ï¸  Timeout â€” site too slow, skipping")
         elif "net::err" in error:
-            print(f"      🌐 Network error — site unreachable")
+            print(f"      ðŸŒ Network error â€” site unreachable")
         else:
-            print(f"      ⚠️  Error: {str(e)[:60]}")
+            print(f"      âš ï¸  Error: {str(e)[:60]}")
         result["success"] = False
 
     return result
@@ -117,7 +117,7 @@ def load_config(path: str = "ceo_config.json") -> dict:
 
 config = load_config()
 
-# ── Nigerian public holidays and events for timing intelligence ───────────────
+# â”€â”€ Nigerian public holidays and events for timing intelligence â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 NIGERIAN_EVENTS = {
     "01-01": "New Year's Day",
     "04-18": "Good Friday",
@@ -128,7 +128,7 @@ NIGERIAN_EVENTS = {
     "12-26": "Boxing Day",
 }
 
-# ── Domains that are NOT official business websites ───────────────────────────
+# â”€â”€ Domains that are NOT official business websites â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 AGGREGATOR_DOMAINS = [
     'hotels.ng', 'chowdeck.com', 'jumia.com', 'yellowplate.ng',
     'goto-where.com', 'wordpress.com', 'blogspot.com', 'tripadvisor.com',
@@ -159,16 +159,16 @@ AGGREGATOR_DOMAINS = [
     '9mobile.com.ng', 'stanbicibtc.com', 'ubagroup.com',
 ]
 
-# ── Hosted site builders — real content, not custom domain ───────────────────
+# â”€â”€ Hosted site builders â€” real content, not custom domain â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 HOSTED_BUILDERS = [
     'wixsite.com', 'squarespace.com', 'webflow.io', 'weebly.com',
     'godaddysites.com', 'site123.me', 'jimdo.com', 'strikingly.com',
 ]
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# AI CLIENT — Claude first, Groq fallback
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# AI CLIENT â€” Claude first, Groq fallback
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def get_ai_response(prompt: str, max_tokens: int = 800) -> str:
     try:
         claude = Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
@@ -179,7 +179,7 @@ def get_ai_response(prompt: str, max_tokens: int = 800) -> str:
         )
         return response.content[0].text
     except Exception as e:
-        if "credit" in str(e).lower() or "balance" in str(e).lower():
+        if True: # Fallback on any error
             groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
             response = groq.chat.completions.create(
                 model="llama-3.3-70b-versatile",
@@ -206,9 +206,9 @@ def safe_json(text: str) -> dict:
     return {}
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # HUMAN BEHAVIOUR HELPERS
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async def human_pause(min_s=2.0, max_s=5.0):
     await asyncio.sleep(random.uniform(min_s, max_s))
 
@@ -247,9 +247,9 @@ async def handle_consent(page):
     return False
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # CONTACT EXTRACTION FROM RAW TEXT
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def extract_contacts(text: str) -> dict:
     # Emails
     email_re = r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}'
@@ -283,9 +283,9 @@ def extract_contacts(text: str) -> dict:
     }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# DOMAIN CLASSIFIER — Is this their official website?
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# DOMAIN CLASSIFIER â€” Is this their official website?
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def classify_domain(url: str, business_name: str) -> dict:
     if not url:
         return {"score": 0, "type": "none", "reason": "No URL"}
@@ -310,29 +310,29 @@ def classify_domain(url: str, business_name: str) -> dict:
         return {
             "score": 7 if name_in_url else 5,
             "type": "hosted_builder",
-            "reason": "Wix/Squarespace/Webflow — their content, not custom domain"
+            "reason": "Wix/Squarespace/Webflow â€” their content, not custom domain"
         }
 
-    # Custom domain — does the business name appear in it?
+    # Custom domain â€” does the business name appear in it?
     name_in_domain = any(word in url_lower for word in name_words)
     if name_in_domain:
         return {
             "score": 10,
             "type": "official",
-            "reason": "Custom domain matching business name — confirmed official"
+            "reason": "Custom domain matching business name â€” confirmed official"
         }
 
     # Custom domain but name doesn't match
     return {
         "score": 6,
         "type": "possible_official",
-        "reason": "Custom domain — name not in URL, needs AI verification"
+        "reason": "Custom domain â€” name not in URL, needs AI verification"
     }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# SMART SEARCH ENGINE — Google first, intelligent fallback chain
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# SMART SEARCH ENGINE â€” Google first, intelligent fallback chain
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 import urllib.request
 import time
 
@@ -378,7 +378,7 @@ async def _search_google_direct(page, query: str, max_links: int = 10) -> list:
     min_gap = random.uniform(30, 60)  # 30-60 seconds between Google searches
     if elapsed < min_gap and _search_count > 0:
         wait = min_gap - elapsed
-        print(f"      ⏳ Google cooldown: {wait:.0f}s...")
+        print(f"      â³ Google cooldown: {wait:.0f}s...")
         await asyncio.sleep(wait)
 
     _search_count += 1
@@ -404,7 +404,7 @@ async def _search_google_direct(page, query: str, max_links: int = 10) -> list:
             "unusual traffic", "not a robot", "captcha",
             "verify you are human", "our systems have detected"
         ]):
-            print(f"      🛑 Google blocked this IP — activating fallback chain")
+            print(f"      ðŸ›‘ Google blocked this IP â€” activating fallback chain")
             _google_blocked = True
             return []
 
@@ -427,13 +427,13 @@ async def _search_google_direct(page, query: str, max_links: int = 10) -> list:
         ])
 
         if links:
-            print(f"      ✅ Google: {len(links[:max_links])} results")
-            # Success — reset blocked status
+            print(f"      âœ… Google: {len(links[:max_links])} results")
+            # Success â€” reset blocked status
             _google_blocked = False
             return links[:max_links]
 
     except Exception as e:
-        print(f"      ⚠️  Google direct failed: {str(e)[:50]}")
+        print(f"      âš ï¸  Google direct failed: {str(e)[:50]}")
 
     return []
 
@@ -466,7 +466,7 @@ async def _search_serpapi(query: str, max_links: int = 10) -> list:
                 break
 
         if not key:
-            print(f"      ⚠️  All SerpAPI keys exhausted")
+            print(f"      âš ï¸  All SerpAPI keys exhausted")
             break
 
         try:
@@ -485,12 +485,12 @@ async def _search_serpapi(query: str, max_links: int = 10) -> list:
             if "error" in results:
                 error_msg = results["error"].lower()
                 if "credit" in error_msg or "limit" in error_msg or "quota" in error_msg:
-                    print(f"      ⚠️  SerpAPI key exhausted — rotating to next key")
+                    print(f"      âš ï¸  SerpAPI key exhausted â€” rotating to next key")
                     _serpapi_exhausted_keys.add(key)
                     attempts += 1
                     continue
                 else:
-                    print(f"      ⚠️  SerpAPI error: {results['error'][:60]}")
+                    print(f"      âš ï¸  SerpAPI error: {results['error'][:60]}")
                     attempts += 1
                     continue
 
@@ -502,14 +502,14 @@ async def _search_serpapi(query: str, max_links: int = 10) -> list:
 
             if links:
                 key_num = _serpapi_keys.index(key) + 1
-                print(f"      ✅ SerpAPI key {key_num}: {len(links)} results")
+                print(f"      âœ… SerpAPI key {key_num}: {len(links)} results")
                 return links[:max_links]
 
         except ImportError:
-            print(f"      ⚠️  serpapi not installed — run: pip install google-search-results")
+            print(f"      âš ï¸  serpapi not installed â€” run: pip install google-search-results")
             break
         except Exception as e:
-            print(f"      ⚠️  SerpAPI failed: {str(e)[:50]}")
+            print(f"      âš ï¸  SerpAPI failed: {str(e)[:50]}")
             attempts += 1
             continue
 
@@ -517,7 +517,7 @@ async def _search_serpapi(query: str, max_links: int = 10) -> list:
 
 
 async def _search_duckduckgo(query: str, max_links: int = 10) -> list:
-    """DuckDuckGo HTML search — no API, very bot-friendly"""
+    """DuckDuckGo HTML search â€” no API, very bot-friendly"""
     try:
         await asyncio.sleep(random.uniform(3, 6))
         encoded = query.replace(' ', '+').replace('"', '%22')
@@ -555,17 +555,17 @@ async def _search_duckduckgo(query: str, max_links: int = 10) -> list:
         clean = list(dict.fromkeys(links))  # deduplicate preserving order
 
         if clean:
-            print(f"      ✅ DuckDuckGo: {len(clean[:max_links])} results")
+            print(f"      âœ… DuckDuckGo: {len(clean[:max_links])} results")
             return clean[:max_links]
 
     except Exception as e:
-        print(f"      ⚠️  DuckDuckGo failed: {str(e)[:50]}")
+        print(f"      âš ï¸  DuckDuckGo failed: {str(e)[:50]}")
 
     return []
 
 
 async def _search_bing(query: str, max_links: int = 10) -> list:
-    """Bing search — final fallback before giving up"""
+    """Bing search â€” final fallback before giving up"""
     try:
         await asyncio.sleep(random.uniform(3, 6))
         encoded = query.replace(' ', '+')
@@ -590,11 +590,11 @@ async def _search_bing(query: str, max_links: int = 10) -> list:
         clean = list(dict.fromkeys(clean))
 
         if clean:
-            print(f"      ✅ Bing fallback: {len(clean[:max_links])} results")
+            print(f"      âœ… Bing fallback: {len(clean[:max_links])} results")
             return clean[:max_links]
 
     except Exception as e:
-        print(f"      ⚠️  Bing failed: {str(e)[:50]}")
+        print(f"      âš ï¸  Bing failed: {str(e)[:50]}")
 
     return []
 
@@ -602,60 +602,60 @@ async def _search_bing(query: str, max_links: int = 10) -> list:
 async def smart_search(page, query: str, max_links: int = 10) -> list:
     """
     Master search function with full intelligent fallback chain:
-    Google → SerpAPI (with key rotation) → DuckDuckGo → Bing → []
+    Google â†’ SerpAPI (with key rotation) â†’ DuckDuckGo â†’ Bing â†’ []
 
     Always tries Google first. If blocked, rotates through
     SerpAPI keys automatically. Never gives up until all options exhausted.
     """
-    print(f"      🔍 Searching: {query[:60]}")
+    print(f"      ðŸ” Searching: {query[:60]}")
 
-    # Step 1 — Google direct (primary, always try first unless blocked)
+    # Step 1 â€” Google direct (primary, always try first unless blocked)
     if not _google_blocked:
         links = await _search_google_direct(page, query, max_links)
         if links:
             return links
-        print(f"      🔄 Google failed — trying SerpAPI...")
+        print(f"      ðŸ”„ Google failed â€” trying SerpAPI...")
     else:
-        print(f"      ⏭️  Google blocked this session — going to SerpAPI")
+        print(f"      â­ï¸  Google blocked this session â€” going to SerpAPI")
 
-    # Step 2 — SerpAPI with automatic key rotation
+    # Step 2 â€” SerpAPI with automatic key rotation
     serpapi_keys = load_serpapi_keys()
     if serpapi_keys:
         links = await _search_serpapi(query, max_links)
         if links:
             return links
-        print(f"      🔄 SerpAPI exhausted — trying DuckDuckGo...")
+        print(f"      ðŸ”„ SerpAPI exhausted â€” trying DuckDuckGo...")
     else:
-        print(f"      ⏭️  No SerpAPI keys — trying DuckDuckGo")
+        print(f"      â­ï¸  No SerpAPI keys â€” trying DuckDuckGo")
 
-    # Step 3 — DuckDuckGo (no API, no limit)
+    # Step 3 â€” DuckDuckGo (no API, no limit)
     links = await _search_duckduckgo(query, max_links)
     if links:
         return links
-    print(f"      🔄 DuckDuckGo failed — trying Bing...")
+    print(f"      ðŸ”„ DuckDuckGo failed â€” trying Bing...")
 
-    # Step 4 — Bing (last resort)
+    # Step 4 â€” Bing (last resort)
     links = await _search_bing(query, max_links)
     if links:
         return links
 
-    # Step 5 — All search engines failed
-    print(f"      ⚠️  All search engines failed — working with direct sources only")
+    # Step 5 â€” All search engines failed
+    print(f"      âš ï¸  All search engines failed â€” working with direct sources only")
     return []
 
 
 async def google_search(page, query: str, max_links=8, retry=2) -> list:
-    """Backward-compatible wrapper — now uses smart_search"""
+    """Backward-compatible wrapper â€” now uses smart_search"""
     return await smart_search(page, query, max_links)
 
 
 async def collect_discovery_links(page, business_name: str, city: str) -> list:
-    """ONE smart search per lead — full fallback chain handles everything"""
+    """ONE smart search per lead â€” full fallback chain handles everything"""
     query = f'{business_name} {city} Nigeria'
 
     links = await smart_search(page, query, max_links=15)
 
-    # Always add Google Maps direct URL — no search needed
+    # Always add Google Maps direct URL â€” no search needed
     maps_url = f"https://www.google.com/maps/search/{business_name.replace(' ', '+')}+{city}+Nigeria"
     if maps_url not in links:
         links.append(maps_url)
@@ -663,7 +663,7 @@ async def collect_discovery_links(page, business_name: str, city: str) -> list:
     return links
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async def find_official_website(page, business_name: str, city: str, links: list = None) -> dict:
     if not links:
         links = await google_search(page, f'"{business_name}" {city} Nigeria website')
@@ -726,13 +726,13 @@ async def find_official_website(page, business_name: str, city: str, links: list
         return False
 
     if best and is_clearly_wrong(best["url"], business_name, city):
-        print(f"      ❌ Rejected clearly wrong site: {best['url'][:60]}")
+        print(f"      âŒ Rejected clearly wrong site: {best['url'][:60]}")
         best = None
         # Try next candidate
         for candidate in unique[1:]:
             if not is_clearly_wrong(candidate["url"], business_name, city) and candidate["classification"]["score"] >= 5:
                 best = candidate
-                print(f"      ✅ Using next best: {best['url'][:60]}")
+                print(f"      âœ… Using next best: {best['url'][:60]}")
                 break
 
     # AI verification for ambiguous cases
@@ -740,7 +740,7 @@ async def find_official_website(page, business_name: str, city: str, links: list
         verdict = await ai_verify_website(best["url"], business_name, city)
         best["classification"]["ai_verdict"] = verdict
         if verdict == "aggregator":
-            print(f"      ❌ AI rejected as aggregator: {best['url'][:60]}")
+            print(f"      âŒ AI rejected as aggregator: {best['url'][:60]}")
             best = None
 
     # Even if no official site found, mine aggregators for contact data
@@ -748,7 +748,7 @@ async def find_official_website(page, business_name: str, city: str, links: list
     for candidate in unique[:5]:
         if candidate["classification"]["score"] < 5:
             try:
-                print(f"      🔍 Mining aggregator for contacts: {candidate['url'][:60]}")
+                print(f"      ðŸ” Mining aggregator for contacts: {candidate['url'][:60]}")
                 await page.goto(candidate["url"], timeout=12000, wait_until="domcontentloaded")
                 await handle_consent(page)
                 await human_pause(2.0, 3.5)
@@ -793,9 +793,9 @@ Reply with ONLY one word: "official", "aggregator", or "uncertain"
         return "uncertain"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # DEEP WEBSITE SCRAPER
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async def deep_scrape_website(page, url: str) -> dict:
     all_data = {
         "emails": [], "phones": [], "whatsapp_links": [],
@@ -830,26 +830,26 @@ async def deep_scrape_website(page, url: str) -> dict:
             continue
         visited.add(target)
 
-        # If domain is blocked — stop trying more pages on same domain
+        # If domain is blocked â€” stop trying more pages on same domain
         if domain_blocked:
-            print(f"      ⏭️  Skipping {target[:50]} — domain is blocked")
+            print(f"      â­ï¸  Skipping {target[:50]} â€” domain is blocked")
             break
 
         # Stop after 3 consecutive failures
         if consecutive_failures >= 3:
-            print(f"      ⏹️  Too many failures — stopping website scrape")
+            print(f"      â¹ï¸  Too many failures â€” stopping website scrape")
             break
 
         try:
-            print(f"      📄 Visiting: {target[:60]}")
+            print(f"      ðŸ“„ Visiting: {target[:60]}")
             nav = await safe_goto(page, target)
 
             if not nav["success"]:
                 consecutive_failures += 1
-                # If blocked on first page — mark entire domain as blocked
+                # If blocked on first page â€” mark entire domain as blocked
                 if nav.get("blocked") and target == url:
                     domain_blocked = True
-                    print(f"      🚫 Domain blocked — skipping all subpages")
+                    print(f"      ðŸš« Domain blocked â€” skipping all subpages")
                     break
                 continue
 
@@ -917,24 +917,24 @@ async def deep_scrape_website(page, url: str) -> dict:
 
             # Stop early if we have enough data
             if len(all_data["emails"]) >= 1 and len(all_data["phones"]) >= 1:
-                print(f"      ✅ Good data found — stopping early")
+                print(f"      âœ… Good data found â€” stopping early")
                 break
 
         except Exception as e:
             consecutive_failures += 1
             err = str(e).lower()
             if "closed" in err or "disconnected" in err:
-                print(f"      ⚠️  Browser issue — stopping website scrape")
+                print(f"      âš ï¸  Browser issue â€” stopping website scrape")
                 break
-            print(f"      ⚠️  Could not load {target[:50]}: {str(e)[:50]}")
+            print(f"      âš ï¸  Could not load {target[:50]}: {str(e)[:50]}")
             continue
 
     return all_data
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # INSTAGRAM SCRAPER
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async def scrape_instagram(page, business_name: str, city: str, links: list = None) -> dict:
     data = {
         "found": False, "url": None, "bio": None,
@@ -960,9 +960,9 @@ async def scrape_instagram(page, business_name: str, city: str, links: list = No
             return data
 
         url = ig_links[0]
-        print(f"      📸 Instagram: {url}")
+        print(f"      ðŸ“¸ Instagram: {url}")
 
-        # Instagram needs extra time — it's heavily JS rendered
+        # Instagram needs extra time â€” it's heavily JS rendered
         await page.goto(url, timeout=20000, wait_until="domcontentloaded")
         await handle_consent(page)
 
@@ -982,9 +982,9 @@ async def scrape_instagram(page, business_name: str, city: str, links: list = No
         text = await page.evaluate("() => document.body.innerText")
         html = await page.evaluate("() => document.body.innerHTML")
 
-        # If Instagram is showing login wall — extract what we can
+        # If Instagram is showing login wall â€” extract what we can
         if "log in" in text.lower() and len(text) < 500:
-            print(f"      ⚠️  Instagram login wall — extracting from meta tags")
+            print(f"      âš ï¸  Instagram login wall â€” extracting from meta tags")
             meta_text = await page.evaluate("""
                 () => {
                     const metas = document.querySelectorAll('meta');
@@ -1006,7 +1006,7 @@ async def scrape_instagram(page, business_name: str, city: str, links: list = No
         data["phone"] = contacts["phones"][0] if contacts["phones"] else None
         data["whatsapp"] = contacts["whatsapp_links"][0] if contacts["whatsapp_links"] else None
 
-        # Follower count — try multiple patterns
+        # Follower count â€” try multiple patterns
         follower_patterns = [
             r'([\d,\.]+[KkMm]?)\s*[Ff]ollower',
             r'([0-9,]+)\s*Followers',
@@ -1035,14 +1035,14 @@ async def scrape_instagram(page, business_name: str, city: str, links: list = No
         await human_pause(2.0, 4.0)
 
     except Exception as e:
-        print(f"      ⚠️  Instagram scrape failed: {str(e)[:60]}")
+        print(f"      âš ï¸  Instagram scrape failed: {str(e)[:60]}")
 
     return data
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # FACEBOOK SCRAPER
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async def scrape_facebook(page, business_name: str, city: str, links: list = None) -> dict:
     data = {
         "found": False, "url": None, "about": None,
@@ -1077,7 +1077,7 @@ async def scrape_facebook(page, business_name: str, city: str, links: list = Non
             return data
 
         url = fb_links[0]
-        print(f"      📘 Facebook: {url}")
+        print(f"      ðŸ“˜ Facebook: {url}")
 
         await page.goto(url, timeout=20000, wait_until="domcontentloaded")
         await handle_consent(page)
@@ -1107,9 +1107,9 @@ async def scrape_facebook(page, business_name: str, city: str, links: list = Non
         text = await page.evaluate("() => document.body.innerText")
         html = await page.evaluate("() => document.body.innerHTML")
 
-        # Facebook often shows login wall — extract from meta tags too
+        # Facebook often shows login wall â€” extract from meta tags too
         if len(text) < 500:
-            print(f"      ⚠️  Facebook limited content — extracting from meta tags")
+            print(f"      âš ï¸  Facebook limited content â€” extracting from meta tags")
             meta_text = await page.evaluate("""
                 () => {
                     const metas = document.querySelectorAll('meta');
@@ -1140,14 +1140,14 @@ async def scrape_facebook(page, business_name: str, city: str, links: list = Non
         await human_pause(2.0, 4.0)
 
     except Exception as e:
-        print(f"      ⚠️  Facebook scrape failed: {str(e)[:60]}")
+        print(f"      âš ï¸  Facebook scrape failed: {str(e)[:60]}")
 
     return data
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # GOOGLE REVIEWS SENTIMENT ANALYSER
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async def scrape_google_reviews(page, business_name: str, city: str, links: list = None) -> dict:
     data = {
         "reviews_text": "",
@@ -1159,7 +1159,7 @@ async def scrape_google_reviews(page, business_name: str, city: str, links: list
     }
 
     try:
-        # Go directly to Google Maps — no extra Google search needed
+        # Go directly to Google Maps â€” no extra Google search needed
         maps_url = f"https://www.google.com/maps/search/{business_name.replace(' ', '+')}+{city}+Nigeria"
         
         # Check if we already have a maps link in our discovery links
@@ -1207,19 +1207,19 @@ Extract and return ONLY valid JSON:
         await human_pause(2.0, 4.0)
 
     except Exception as e:
-        print(f"      ⚠️  Reviews scrape failed: {str(e)[:60]}")
+        print(f"      âš ï¸  Reviews scrape failed: {str(e)[:60]}")
 
     return data
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # COMPETITOR FINDER
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async def find_competitors(page, business_name: str, category: str, city: str, links: list = None) -> list:
-    """Use AI to infer competitors from what we already know — no extra Google search"""
+    """Use AI to infer competitors from what we already know â€” no extra Google search"""
     competitors = []
     try:
-        print(f"      🏆 Inferring competitors from existing data...")
+        print(f"      ðŸ† Inferring competitors from existing data...")
         prompt = f"""
 Based on your knowledge, name 3 likely direct competitors of "{business_name}" 
 which is a {category} business in {city}, Nigeria.
@@ -1244,20 +1244,20 @@ Return ONLY valid JSON:
                 if c.get("name", "").lower() != business_name.lower()
             ][:3]
     except Exception as e:
-        print(f"      ⚠️  Competitor inference failed: {str(e)[:60]}")
+        print(f"      âš ï¸  Competitor inference failed: {str(e)[:60]}")
     return competitors
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# OWNER HUNTER — LinkedIn + Google
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# OWNER HUNTER â€” LinkedIn + Google
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async def hunt_owner(page, business_name: str, city: str, links: list = None) -> dict:
     info = {"owner_name": None, "email": None, "whatsapp": None,
             "owner_source": None, "email_source": None}
 
     all_text = ""
 
-    # Only visit pages we already found — no new Google searches
+    # Only visit pages we already found â€” no new Google searches
     if links:
         linkedin_links = [l for l in links if 'linkedin.com' in l][:1]
         other_links = [l for l in links if 'linkedin.com' not in l
@@ -1266,7 +1266,7 @@ async def hunt_owner(page, business_name: str, city: str, links: list = None) ->
         
         for link in linkedin_links + other_links:
             try:
-                print(f"      📄 Reading: {link[:70]}")
+                print(f"      ðŸ“„ Reading: {link[:70]}")
                 nav = await safe_goto(page, link, timeout=12000)
                 if nav["success"]:
                     all_text += " " + nav["text"][:2000]
@@ -1312,14 +1312,14 @@ Return ONLY valid JSON:
                 if parsed.get("whatsapp") and parsed.get("whatsapp") != "null":
                     info["whatsapp"] = parsed["whatsapp"]
         except Exception as e:
-            print(f"      ⚠️  AI owner extraction failed: {e}")
+            print(f"      âš ï¸  AI owner extraction failed: {e}")
 
     return info
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # BUSINESS PERSONALITY PROFILER
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def profile_business_personality(lead: dict) -> dict:
     site_data = lead.get("website_details") or {}
     ig_data = lead.get("instagram") or {}
@@ -1355,9 +1355,9 @@ Return ONLY valid JSON:
         return {}
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # TIMING INTELLIGENCE
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def get_contact_timing(business_type: str = "restaurant") -> dict:
     now = datetime.now()
     day = now.strftime("%A")
@@ -1376,11 +1376,11 @@ def get_contact_timing(business_type: str = "restaurant") -> dict:
     # Seasonal opportunity
     month = now.month
     if month == 12:
-        season_note = "December — peak spending season, perfect time to pitch"
+        season_note = "December â€” peak spending season, perfect time to pitch"
     elif month in [3, 4]:
-        season_note = "Easter season — restaurants especially busy, great time to reach out"
+        season_note = "Easter season â€” restaurants especially busy, great time to reach out"
     elif month in [6, 7]:
-        season_note = "Mid-year — good time for businesses to invest in growth"
+        season_note = "Mid-year â€” good time for businesses to invest in growth"
     else:
         season_note = None
 
@@ -1388,19 +1388,19 @@ def get_contact_timing(business_type: str = "restaurant") -> dict:
         "current_day": day,
         "is_good_day": is_good_day,
         "is_good_time": is_good_time,
-        "best_send_time": "Tuesday–Thursday, 9am–12pm WAT",
+        "best_send_time": "Tuesdayâ€“Thursday, 9amâ€“12pm WAT",
         "upcoming_event": upcoming_event,
         "season_note": season_note,
         "recommendation": (
-            "Send now — good timing" if is_good_day and is_good_time
-            else "Queue for Tuesday–Thursday morning"
+            "Send now â€” good timing" if is_good_day and is_good_time
+            else "Queue for Tuesdayâ€“Thursday morning"
         )
     }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # NURTURE PLAN GENERATOR
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def generate_nurture_plan(lead: dict, personality: dict) -> dict:
     prompt = f"""
 Create a 90-day nurture plan for a business that said "not right now" to our digital services.
@@ -1434,9 +1434,9 @@ Return ONLY valid JSON:
         return {}
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # PITCH ANGLE GENERATOR
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def generate_pitch_angle(lead: dict, personality: dict) -> str:
     reviews = lead.get("reviews_analysis") or lead.get("reviews") or {}
     ig = lead.get("instagram") or {}
@@ -1463,9 +1463,9 @@ No marketing jargon like "optimize" or "leverage"."""
         return "We noticed some great things about your business and a few opportunities worth exploring."
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # CONFIDENCE SCORER
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def score_confidence(value, sources: list) -> str:
     if not value:
         return "none"
@@ -1476,9 +1476,9 @@ def score_confidence(value, sources: list) -> str:
     return "low"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # MAIN ENRICHER
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
     with open(leads_file, "r") as f:
         all_leads = json.load(f)
@@ -1487,10 +1487,10 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
     leads = [l for l in all_leads if not l.get("enriched")]
 
     if not leads:
-        print("✅ All leads already enriched — nothing to do")
+        print("âœ… All leads already enriched â€” nothing to do")
         return
 
-    print(f"📋 {len(all_leads)} total leads — enriching {len(leads)} new ones today")
+    print(f"ðŸ“‹ {len(all_leads)} total leads â€” enriching {len(leads)} new ones today")
     print("=" * 65)
 
     async with async_playwright() as p:
@@ -1571,99 +1571,99 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
             city = lead.get("city", "Nigeria")
 
             print(f"\n{'='*65}")
-            print(f"💎 [{i}/{len(leads)}] {name} ({city})")
+            print(f"ðŸ’Ž [{i}/{len(leads)}] {name} ({city})")
             print(f"{'='*65}")
 
             enriched = lead.copy()
 
-            # ── DISCOVERY STEP
+            # â”€â”€ DISCOVERY STEP
             discovery_links = await collect_discovery_links(page, name, city)
             google_blocked = not discovery_links
 
             if google_blocked:
-                print(f"   ⚠️  Google blocked — working with direct sources only")
-                print(f"   ℹ️  Will still try Maps, Instagram, Facebook directly")
+                print(f"   âš ï¸  Google blocked â€” working with direct sources only")
+                print(f"   â„¹ï¸  Will still try Maps, Instagram, Facebook directly")
             
             await human_pause(8.0, 15.0)
 
-            # ── 1. Official website
-            print(f"\n   🌐 STEP 1 — Finding official website...")
+            # â”€â”€ 1. Official website
+            print(f"\n   ðŸŒ STEP 1 â€” Finding official website...")
             website_result = await find_official_website(page, name, city, discovery_links)
             enriched["official_website"] = website_result
 
-            # ── 2. Deep scrape website
+            # â”€â”€ 2. Deep scrape website
             if website_result["url"] and website_result["score"] >= 5:
-                print(f"\n   📄 STEP 2 — Deep scraping website...")
+                print(f"\n   ðŸ“„ STEP 2 â€” Deep scraping website...")
                 try:
                     site_data = await deep_scrape_website(page, website_result["url"])
                     enriched["website_details"] = site_data
-                    print(f"      📧 Emails:   {site_data['emails'] or 'None'}")
-                    print(f"      📞 Phones:   {site_data['phones'] or 'None'}")
-                    print(f"      💬 WhatsApp: {site_data['whatsapp_links'] or 'None'}")
-                    print(f"      📱 Socials:  {list(site_data['socials'].keys()) or 'None'}")
+                    print(f"      ðŸ“§ Emails:   {site_data['emails'] or 'None'}")
+                    print(f"      ðŸ“ž Phones:   {site_data['phones'] or 'None'}")
+                    print(f"      ðŸ’¬ WhatsApp: {site_data['whatsapp_links'] or 'None'}")
+                    print(f"      ðŸ“± Socials:  {list(site_data['socials'].keys()) or 'None'}")
                 except Exception as e:
-                    print(f"      ⚠️  Website scrape failed: {str(e)[:60]} — continuing")
+                    print(f"      âš ï¸  Website scrape failed: {str(e)[:60]} â€” continuing")
                     enriched["website_details"] = {}
             else:
                 enriched["website_details"] = {}
-                print(f"      ⚠️  No official website — skipping scrape")
+                print(f"      âš ï¸  No official website â€” skipping scrape")
 
             await human_pause(3.0, 5.0)
 
-            # ── 3. Instagram
-            print(f"\n   📸 STEP 3 — Searching Instagram...")
+            # â”€â”€ 3. Instagram
+            print(f"\n   ðŸ“¸ STEP 3 â€” Searching Instagram...")
             ig_data = await scrape_instagram(page, name, city, discovery_links)
             enriched["instagram"] = ig_data
             if ig_data["found"]:
-                print(f"      ✅ Found: {ig_data['url']}")
-                print(f"      👥 Followers: {ig_data['followers'] or 'unknown'}")
-                print(f"      📧 Email: {ig_data['email'] or 'None'}")
+                print(f"      âœ… Found: {ig_data['url']}")
+                print(f"      ðŸ‘¥ Followers: {ig_data['followers'] or 'unknown'}")
+                print(f"      ðŸ“§ Email: {ig_data['email'] or 'None'}")
             else:
-                print(f"      ⚠️  Not found on Instagram")
+                print(f"      âš ï¸  Not found on Instagram")
 
             await human_pause(3.0, 5.0)
 
-            # ── 4. Facebook
-            print(f"\n   📘 STEP 4 — Searching Facebook...")
+            # â”€â”€ 4. Facebook
+            print(f"\n   ðŸ“˜ STEP 4 â€” Searching Facebook...")
             fb_data = await scrape_facebook(page, name, city, discovery_links)
             enriched["facebook"] = fb_data
             if fb_data["found"]:
-                print(f"      ✅ Found: {fb_data['url']}")
-                print(f"      👍 Likes: {fb_data['likes'] or 'unknown'}")
-                print(f"      📧 Email: {fb_data['email'] or 'None'}")
+                print(f"      âœ… Found: {fb_data['url']}")
+                print(f"      ðŸ‘ Likes: {fb_data['likes'] or 'unknown'}")
+                print(f"      ðŸ“§ Email: {fb_data['email'] or 'None'}")
             else:
-                print(f"      ⚠️  Not found on Facebook")
+                print(f"      âš ï¸  Not found on Facebook")
 
             await human_pause(3.0, 5.0)
 
-            # ── 5. Reviews & Sentiment
-            print(f"\n   ⭐ STEP 5 — Analysing Google reviews...")
+            # â”€â”€ 5. Reviews & Sentiment
+            print(f"\n   â­ STEP 5 â€” Analysing Google reviews...")
             reviews_data = await scrape_google_reviews(page, name, city, discovery_links)
             enriched["reviews_analysis"] = reviews_data
             if reviews_data["praises"]:
-                print(f"      💚 Praises:    {reviews_data['praises'][:2]}")
+                print(f"      ðŸ’š Praises:    {reviews_data['praises'][:2]}")
             if reviews_data["complaints"]:
-                print(f"      🔴 Complaints: {reviews_data['complaints'][:2]}")
+                print(f"      ðŸ”´ Complaints: {reviews_data['complaints'][:2]}")
 
             await human_pause(3.0, 5.0)
 
-            # ── 6. Competitors
-            print(f"\n   🏆 STEP 6 — Finding competitors...")
+            # â”€â”€ 6. Competitors
+            print(f"\n   ðŸ† STEP 6 â€” Finding competitors...")
             competitors = await find_competitors(page, name, category, city, discovery_links)
             enriched["competitors"] = competitors
             for c in competitors:
-                print(f"      vs {c.get('name')} — website: {c.get('has_website')}, booking: {c.get('has_online_booking')}")
+                print(f"      vs {c.get('name')} â€” website: {c.get('has_website')}, booking: {c.get('has_online_booking')}")
 
             await human_pause(3.0, 5.0)
 
-            # ── 7. Owner hunt
-            print(f"\n   👤 STEP 7 — Hunting owner info...")
+            # â”€â”€ 7. Owner hunt
+            print(f"\n   ðŸ‘¤ STEP 7 â€” Hunting owner info...")
             owner_data = await hunt_owner(page, name, city, discovery_links)
             enriched["owner_name"] = owner_data.get("owner_name")
             enriched["owner_source"] = owner_data.get("owner_source")
-            print(f"      👤 Owner: {enriched['owner_name'] or 'Not found'}")
+            print(f"      ðŸ‘¤ Owner: {enriched['owner_name'] or 'Not found'}")
 
-            # ── 8. Merge all contact data with confidence scoring
+            # â”€â”€ 8. Merge all contact data with confidence scoring
             # Pull aggregator contacts found during website search
             agg_contacts = enriched.get("official_website", {}).get("aggregator_contacts", {})
 
@@ -1716,42 +1716,42 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
             enriched["email_confidence"] = score_confidence(enriched["contact_email"], email_sources)
             enriched["email_sources"] = email_sources
 
-            print(f"      📧 Email ({enriched['email_confidence']}): {enriched['contact_email'] or 'Not found'}")
-            print(f"      💬 WhatsApp: {enriched['contact_whatsapp'] or 'Not found'}")
+            print(f"      ðŸ“§ Email ({enriched['email_confidence']}): {enriched['contact_email'] or 'Not found'}")
+            print(f"      ðŸ’¬ WhatsApp: {enriched['contact_whatsapp'] or 'Not found'}")
 
             await human_pause(2.0, 4.0)
 
-            # ── 9. Business personality profile
-            print(f"\n   🧠 STEP 8 — Building personality profile...")
+            # â”€â”€ 9. Business personality profile
+            print(f"\n   ðŸ§  STEP 8 â€” Building personality profile...")
             personality = profile_business_personality(enriched)
             enriched["personality"] = personality
             if personality:
-                print(f"      🎭 Vibe:        {personality.get('vibe', '?')}")
-                print(f"      🗣️  Tone:        {personality.get('tone_to_use', '?')}")
-                print(f"      🏆 Key pride:   {personality.get('key_pride', '?')[:60]}")
-                print(f"      🎯 Opportunity: {personality.get('biggest_opportunity', '?')[:60]}")
+                print(f"      ðŸŽ­ Vibe:        {personality.get('vibe', '?')}")
+                print(f"      ðŸ—£ï¸  Tone:        {personality.get('tone_to_use', '?')}")
+                print(f"      ðŸ† Key pride:   {personality.get('key_pride', '?')[:60]}")
+                print(f"      ðŸŽ¯ Opportunity: {personality.get('biggest_opportunity', '?')[:60]}")
 
-            # ── 10. Timing intelligence
+            # â”€â”€ 10. Timing intelligence
             timing = get_contact_timing(category)
             enriched["contact_timing"] = timing
-            print(f"\n   ⏰ Best send time: {timing['recommendation']}")
+            print(f"\n   â° Best send time: {timing['recommendation']}")
             if timing.get("season_note"):
-                print(f"   🗓️  {timing['season_note']}")
+                print(f"   ðŸ—“ï¸  {timing['season_note']}")
 
-            # ── 11. Pitch angle
-            print(f"\n   🎯 STEP 9 — Crafting personalized pitch...")
+            # â”€â”€ 11. Pitch angle
+            print(f"\n   ðŸŽ¯ STEP 9 â€” Crafting personalized pitch...")
             pitch = generate_pitch_angle(enriched, personality)
             enriched["pitch_angle"] = pitch
-            print(f"   💡 {pitch}")
+            print(f"   ðŸ’¡ {pitch}")
 
-            # ── 12. Nurture plan
-            print(f"\n   🌱 STEP 10 — Building nurture plan...")
+            # â”€â”€ 12. Nurture plan
+            print(f"\n   ðŸŒ± STEP 10 â€” Building nurture plan...")
             nurture = generate_nurture_plan(enriched, personality)
             enriched["nurture_plan"] = nurture
             if nurture.get("referral_message"):
-                print(f"   🤝 Referral: {nurture['referral_message'][:80]}...")
+                print(f"   ðŸ¤ Referral: {nurture['referral_message'][:80]}...")
 
-            # ── Business health score
+            # â”€â”€ Business health score
             health_score = sum([
                 bool(enriched.get("official_website", {}).get("url")),
                 bool(enriched.get("contact_email")),
@@ -1768,11 +1768,11 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
             enriched["enriched_date"] = datetime.now().strftime("%Y-%m-%d")
 
             enriched_leads.append(enriched)
-            print(f"\n   ✅ {name} complete — enrichment score: {health_score}/8")
+            print(f"\n   âœ… {name} complete â€” enrichment score: {health_score}/8")
 
             # Short human rest between leads
             rest = random.uniform(8.0, 15.0)
-            print(f"   ⏳ Resting {rest:.0f}s before next lead...\n")
+            print(f"   â³ Resting {rest:.0f}s before next lead...\n")
             await asyncio.sleep(rest)
 
         await browser.close()
@@ -1808,7 +1808,7 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
 
     # Summary
     print("\n" + "=" * 65)
-    print("💎 DEEP ENRICHMENT COMPLETE")
+    print("ðŸ’Ž DEEP ENRICHMENT COMPLETE")
     print("=" * 65)
     with_email = [l for l in enriched_leads if l.get("contact_email")]
     with_owner = [l for l in enriched_leads if l.get("owner_name")]
@@ -1823,8 +1823,8 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
     print(f"Instagram profiles found:    {len(with_ig)}")
     print(f"Facebook pages found:        {len(with_fb)}")
     print(f"\nFiles saved:")
-    print(f"  results/leads/enriched_leads.json  — full data per lead")
-    print(f"  results/audits/contact_sheet.json  — clean contact summary")
+    print(f"  results/leads/enriched_leads.json  â€” full data per lead")
+    print(f"  results/audits/contact_sheet.json  â€” clean contact summary")
     print("=" * 65)
 
 

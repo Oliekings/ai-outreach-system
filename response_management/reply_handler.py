@@ -1,4 +1,4 @@
-import json
+﻿import json
 import os
 import re
 from datetime import datetime
@@ -19,7 +19,7 @@ def get_ai_response(prompt: str, max_tokens: int = 1000) -> str:
         )
         return response.content[0].text
     except Exception as e:
-        if "credit" in str(e).lower() or "balance" in str(e).lower():
+        if True: # Fallback on any error
             groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
             response = groq.chat.completions.create(
                 model="llama-3.3-70b-versatile",
@@ -48,9 +48,9 @@ def save_reply_log(log: dict):
         json.dump(log, f, indent=2, ensure_ascii=False)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # APPROVE AND SEND REPLY
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def approve_reply(message_id: str, edit_body: str = None):
     """
     Approve a pending reply and queue it for sending.
@@ -65,15 +65,15 @@ def approve_reply(message_id: str, edit_body: str = None):
             reply["status"] = "ready_to_send"
             reply["approved_at"] = datetime.now().isoformat()
             save_reply_log(log)
-            print(f"✅ Reply approved for {reply['business']}")
+            print(f"âœ… Reply approved for {reply['business']}")
             return True
 
-    print(f"❌ Reply not found: {message_id}")
+    print(f"âŒ Reply not found: {message_id}")
     return False
 
 
 def reject_reply(message_id: str, reason: str = ""):
-    """Mark a reply as rejected — will not be sent"""
+    """Mark a reply as rejected â€” will not be sent"""
     log = load_reply_log()
     for reply in log["replies"]:
         if reply.get("message_id") == message_id:
@@ -81,7 +81,7 @@ def reject_reply(message_id: str, reason: str = ""):
             reply["rejection_reason"] = reason
             reply["rejected_at"] = datetime.now().isoformat()
             save_reply_log(log)
-            print(f"❌ Reply rejected for {reply['business']}")
+            print(f"âŒ Reply rejected for {reply['business']}")
             return True
     return False
 
@@ -97,13 +97,13 @@ def approve_all_by_intent(intent: str):
             reply["approved_at"] = datetime.now().isoformat()
             count += 1
     save_reply_log(log)
-    print(f"✅ Approved {count} {intent} replies")
+    print(f"âœ… Approved {count} {intent} replies")
     return count
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # NURTURE MANAGER
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def get_nurture_queue() -> list:
     """Get all leads that need nurture follow-ups today"""
     enriched_file = "results/leads/enriched_leads.json"
@@ -159,10 +159,10 @@ def send_nurture_messages(dry_run: bool = False):
     nurture_queue = get_nurture_queue()
 
     if not nurture_queue:
-        print("✅ No nurture messages due today")
+        print("âœ… No nurture messages due today")
         return
 
-    print(f"\n🌱 NURTURE MANAGER")
+    print(f"\nðŸŒ± NURTURE MANAGER")
     print(f"{'='*55}")
     print(f"Nurture messages due: {len(nurture_queue)}")
     print(f"{'='*55}\n")
@@ -190,11 +190,11 @@ def send_nurture_messages(dry_run: bool = False):
         message_preview = tp.get("message_preview", "")
         value_offered = tp.get("value_offered", "")
 
-        print(f"🌱 {name} — Day {tp.get('day')} nurture ({tp_type})")
+        print(f"ðŸŒ± {name} â€” Day {tp.get('day')} nurture ({tp_type})")
         print(f"   Value: {value_offered}")
 
         if dry_run:
-            print(f"   🔍 DRY RUN — Would send: {subject}")
+            print(f"   ðŸ” DRY RUN â€” Would send: {subject}")
             print(f"   Preview: {message_preview[:100]}...")
             continue
 
@@ -215,9 +215,9 @@ def send_nurture_messages(dry_run: bool = False):
                     server.login(smtp_user, smtp_pass)
                     server.sendmail(from_email, to_email, msg.as_string())
                 sent = True
-                print(f"   ✅ Nurture email sent to {to_email}")
+                print(f"   âœ… Nurture email sent to {to_email}")
             except Exception as e:
-                print(f"   ❌ Email failed: {str(e)[:60]}")
+                print(f"   âŒ Email failed: {str(e)[:60]}")
 
         # Mark as sent in lead record
         if sent:
@@ -232,9 +232,9 @@ def send_nurture_messages(dry_run: bool = False):
         json.dump(all_leads, f, indent=2, ensure_ascii=False)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # DAILY HANDLER REPORT
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def generate_handler_report() -> str:
     log = load_reply_log()
     all_replies = log.get("replies", [])
@@ -245,44 +245,44 @@ def generate_handler_report() -> str:
     replied = [r for r in all_replies if r.get("status") == "replied"]
 
     report = f"""
-╔{'═'*52}╗
-║  REPLY HANDLER REPORT                            ║
-║  {datetime.now().strftime('%d %b %Y, %I:%M %p'):<48}  ║
-╚{'═'*52}╝
+â•”{'â•'*52}â•—
+â•‘  REPLY HANDLER REPORT                            â•‘
+â•‘  {datetime.now().strftime('%d %b %Y, %I:%M %p'):<48}  â•‘
+â•š{'â•'*52}â•
 
 REPLY STATISTICS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
 Total replies received:    {len(all_replies)}
-🔥 Interested leads:       {len(interested)}
-⏳ Pending review:         {len(pending)}
-📤 Ready to send:          {len(ready)}
-✅ Already replied:        {len(replied)}
+ðŸ”¥ Interested leads:       {len(interested)}
+â³ Pending review:         {len(pending)}
+ðŸ“¤ Ready to send:          {len(ready)}
+âœ… Already replied:        {len(replied)}
 """
 
     if interested:
-        report += "\n🔥 HOT LEADS — NEEDS YOUR ATTENTION:\n"
-        report += "━" * 52 + "\n"
+        report += "\nðŸ”¥ HOT LEADS â€” NEEDS YOUR ATTENTION:\n"
+        report += "â”" * 52 + "\n"
         for r in interested:
-            report += f"  • {r['business']}\n"
+            report += f"  â€¢ {r['business']}\n"
             report += f"    From: {r['from_email']}\n"
             report += f"    Received: {r['date_received'][:10]}\n"
             if r.get("drafted_reply", {}).get("body"):
-                report += f"    Draft ready: ✅\n"
+                report += f"    Draft ready: âœ…\n"
             report += f"    Status: {r['status']}\n\n"
 
     if pending:
-        report += "\n⏳ PENDING REVIEW:\n"
-        report += "━" * 52 + "\n"
+        report += "\nâ³ PENDING REVIEW:\n"
+        report += "â”" * 52 + "\n"
         for r in pending[:5]:
-            report += f"  • {r['business']} — {r.get('classification',{}).get('intent','?')}\n"
+            report += f"  â€¢ {r['business']} â€” {r.get('classification',{}).get('intent','?')}\n"
 
-    report += "\n" + "═" * 52 + "\n"
+    report += "\n" + "â•" * 52 + "\n"
     return report
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # ENTRY POINT
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 if __name__ == "__main__":
     import sys
 

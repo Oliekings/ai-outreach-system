@@ -1,4 +1,4 @@
-import json
+﻿import json
 import os
 import re
 import shutil
@@ -13,9 +13,9 @@ os.makedirs("results/sites", exist_ok=True)
 os.makedirs("results/sites/previews", exist_ok=True)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # AI CLIENT
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def get_ai_response(prompt: str, max_tokens: int = 4000) -> str:
     try:
         claude = Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
@@ -26,7 +26,7 @@ def get_ai_response(prompt: str, max_tokens: int = 4000) -> str:
         )
         return response.content[0].text
     except Exception as e:
-        if "credit" in str(e).lower() or "balance" in str(e).lower():
+        if True: # Fallback on any error
             groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
             response = groq.chat.completions.create(
                 model="llama-3.3-70b-versatile",
@@ -37,9 +37,9 @@ def get_ai_response(prompt: str, max_tokens: int = 4000) -> str:
         raise e
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # NICHE COLOR SCHEMES
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 NICHE_THEMES = {
     "restaurant": {
         "primary": "#C8860A",
@@ -122,9 +122,9 @@ def get_theme(niche: str) -> dict:
     return NICHE_THEMES["default"]
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # SITE CONTENT GENERATOR
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def generate_site_content(lead: dict) -> dict:
     name = lead["name"]
     niche = lead.get("niche", "business")
@@ -202,7 +202,7 @@ Generate ONLY valid JSON with this exact structure:
             content["facebook_url"] = fb.get("url", "")
             return content
     except Exception as e:
-        print(f"   ⚠️  Content generation failed: {e}")
+        print(f"   âš ï¸  Content generation failed: {e}")
 
     # Fallback content
     return {
@@ -233,9 +233,9 @@ Generate ONLY valid JSON with this exact structure:
     }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # HTML SITE GENERATOR
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def build_html_site(lead: dict, content: dict, theme: dict) -> str:
     name = lead["name"]
     city = lead.get("city", "Nigeria")
@@ -255,9 +255,9 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
     try:
         rating_float = float(content.get("rating", 0))
         full_stars = int(rating_float)
-        stars_html = "★" * full_stars + "☆" * (5 - full_stars)
+        stars_html = "â˜…" * full_stars + "â˜†" * (5 - full_stars)
     except:
-        stars_html = "★★★★★"
+        stars_html = "â˜…â˜…â˜…â˜…â˜…"
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -286,7 +286,7 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
             overflow-x: hidden;
         }}
 
-        /* ── NAVIGATION ── */
+        /* â”€â”€ NAVIGATION â”€â”€ */
         nav {{
             position: fixed;
             top: 0;
@@ -349,7 +349,7 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
             transition: 0.3s;
         }}
 
-        /* ── HERO ── */
+        /* â”€â”€ HERO â”€â”€ */
         .hero {{
             min-height: 100vh;
             background: linear-gradient(135deg, var(--secondary) 0%, {theme['primary']}44 100%);
@@ -497,7 +497,7 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
             letter-spacing: 1px;
         }}
 
-        /* ── SECTIONS ── */
+        /* â”€â”€ SECTIONS â”€â”€ */
         section {{ padding: 5rem 2rem; }}
 
         .container {{
@@ -530,7 +530,7 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
             max-width: 600px;
         }}
 
-        /* ── ABOUT ── */
+        /* â”€â”€ ABOUT â”€â”€ */
         .about {{ background: var(--accent); }}
 
         .about-grid {{
@@ -612,7 +612,7 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
             line-height: 1.6;
         }}
 
-        /* ── SERVICES ── */
+        /* â”€â”€ SERVICES â”€â”€ */
         .services-grid {{
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -659,7 +659,7 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
             line-height: 1.7;
         }}
 
-        /* ── TESTIMONIALS ── */
+        /* â”€â”€ TESTIMONIALS â”€â”€ */
         .testimonials {{ background: var(--secondary); }}
 
         .testimonials .section-title {{ color: white; }}
@@ -725,7 +725,7 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
             font-size: 0.78rem;
         }}
 
-        /* ── CONTACT ── */
+        /* â”€â”€ CONTACT â”€â”€ */
         .contact {{ background: var(--accent); }}
 
         .contact-grid {{
@@ -849,7 +849,7 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
             transform: translateY(-1px);
         }}
 
-        /* ── FOOTER ── */
+        /* â”€â”€ FOOTER â”€â”€ */
         footer {{
             background: var(--secondary);
             color: rgba(255,255,255,0.6);
@@ -906,7 +906,7 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
             font-size: 0.8rem;
         }}
 
-        /* ── FLOATING WHATSAPP ── */
+        /* â”€â”€ FLOATING WHATSAPP â”€â”€ */
         .float-wa {{
             position: fixed;
             bottom: 2rem;
@@ -938,7 +938,7 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
             100% {{ box-shadow: 0 8px 25px rgba(37,211,102,0.4); }}
         }}
 
-        /* ── SAMPLE BANNER ── */
+        /* â”€â”€ SAMPLE BANNER â”€â”€ */
         .sample-banner {{
             background: linear-gradient(90deg, var(--primary), {theme['secondary']});
             color: white;
@@ -953,7 +953,7 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
 
         .sample-banner strong {{ font-weight: 700; }}
 
-        /* ── RESPONSIVE ── */
+        /* â”€â”€ RESPONSIVE â”€â”€ */
         @media (max-width: 768px) {{
             .nav-links {{ display: none; }}
             .hamburger {{ display: flex; }}
@@ -966,7 +966,7 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
             .about-visual {{ height: 250px; }}
         }}
 
-        /* ── ANIMATIONS ── */
+        /* â”€â”€ ANIMATIONS â”€â”€ */
         .fade-in {{
             opacity: 0;
             transform: translateY(20px);
@@ -983,8 +983,8 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
 
     <!-- Sample Banner -->
     <div class="sample-banner">
-        🌟 This is a <strong>free sample website</strong> built specially for <strong>{name}</strong> — 
-        <a href="{wa_link}" style="color:white;font-weight:700;">Click here to get yours live today →</a>
+        ðŸŒŸ This is a <strong>free sample website</strong> built specially for <strong>{name}</strong> â€” 
+        <a href="{wa_link}" style="color:white;font-weight:700;">Click here to get yours live today â†’</a>
     </div>
 
     <!-- Navigation -->
@@ -1004,11 +1004,11 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
     <!-- Hero -->
     <section class="hero" id="home">
         <div class="hero-content fade-in">
-            <div class="hero-badge">📍 {city}, Nigeria</div>
+            <div class="hero-badge">ðŸ“ {city}, Nigeria</div>
             <h1>{name}<br><span>{content.get('tagline', theme['hero_phrase'])}</span></h1>
             <p class="hero-desc">{content.get('hero_description', '')}</p>
             <div class="hero-buttons">
-                <a href="{wa_link}" class="btn-primary">💬 Chat on WhatsApp</a>
+                <a href="{wa_link}" class="btn-primary">ðŸ’¬ Chat on WhatsApp</a>
                 <a href="#about" class="btn-secondary">Learn More</a>
             </div>
             {'<div class="hero-stats"><div class="stat"><span class="stat-number">' + content.get('rating', '4.5') + '</span><span class="stat-label">Star Rating</span></div><div class="stat"><span class="stat-number">' + content.get('review_count', '100+') + '</span><span class="stat-label">Happy Customers</span></div><div class="stat"><span class="stat-number">100%</span><span class="stat-label">Satisfaction</span></div></div>' if content.get('rating') else ''}
@@ -1029,21 +1029,21 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
                     <p class="section-desc">{content.get('about_text', '')}</p>
                     <div class="about-features">
                         <div class="feature">
-                            <div class="feature-icon">✓</div>
+                            <div class="feature-icon">âœ“</div>
                             <div class="feature-text">
                                 <h4>Quality First</h4>
                                 <p>We never compromise on the quality of what we deliver to our customers.</p>
                             </div>
                         </div>
                         <div class="feature">
-                            <div class="feature-icon">❤</div>
+                            <div class="feature-icon">â¤</div>
                             <div class="feature-text">
                                 <h4>Customer Focused</h4>
                                 <p>Every decision we make starts and ends with your satisfaction in mind.</p>
                             </div>
                         </div>
                         <div class="feature">
-                            <div class="feature-icon">🏆</div>
+                            <div class="feature-icon">ðŸ†</div>
                             <div class="feature-text">
                                 <h4>Proven Track Record</h4>
                                 <p>Trusted by hundreds of customers across {city} and beyond.</p>
@@ -1064,17 +1064,17 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
             </div>
             <div class="services-grid">
                 <div class="service-card fade-in">
-                    <div class="service-icon">⭐</div>
+                    <div class="service-icon">â­</div>
                     <h3>{content.get('service_1_name', 'Premium Service')}</h3>
                     <p>{content.get('service_1_desc', 'World-class service tailored to your needs.')}</p>
                 </div>
                 <div class="service-card fade-in">
-                    <div class="service-icon">🎯</div>
+                    <div class="service-icon">ðŸŽ¯</div>
                     <h3>{content.get('service_2_name', 'Expert Solutions')}</h3>
                     <p>{content.get('service_2_desc', 'Experienced professionals dedicated to excellence.')}</p>
                 </div>
                 <div class="service-card fade-in">
-                    <div class="service-icon">💎</div>
+                    <div class="service-icon">ðŸ’Ž</div>
                     <h3>{content.get('service_3_name', 'Customer Care')}</h3>
                     <p>{content.get('service_3_desc', 'Your satisfaction is our top priority.')}</p>
                 </div>
@@ -1091,7 +1091,7 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
             </div>
             <div class="testimonials-grid">
                 <div class="testimonial-card fade-in">
-                    <div class="testimonial-stars">★★★★★</div>
+                    <div class="testimonial-stars">â˜…â˜…â˜…â˜…â˜…</div>
                     <p class="testimonial-text">"{content.get('testimonial_1', 'Absolutely wonderful experience!')}"</p>
                     <div class="testimonial-author">
                         <div class="author-avatar">{content.get('testimonial_1_author', 'C.O')[0]}</div>
@@ -1102,7 +1102,7 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
                     </div>
                 </div>
                 <div class="testimonial-card fade-in">
-                    <div class="testimonial-stars">★★★★★</div>
+                    <div class="testimonial-stars">â˜…â˜…â˜…â˜…â˜…</div>
                     <p class="testimonial-text">"{content.get('testimonial_2', 'Best experience ever. Highly recommended!')}"</p>
                     <div class="testimonial-author">
                         <div class="author-avatar">{content.get('testimonial_2_author', 'F.A')[0]}</div>
@@ -1126,18 +1126,18 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
             </div>
             <div class="contact-grid">
                 <div class="contact-info fade-in">
-                    {'<div class="contact-item"><div class="contact-icon">📞</div><div class="contact-detail"><h4>Phone</h4><a href="tel:' + content.get('phone','') + '">' + content.get('phone','') + '</a></div></div>' if content.get('phone') else ''}
-                    {'<div class="contact-item"><div class="contact-icon">✉</div><div class="contact-detail"><h4>Email</h4><a href="mailto:' + content.get('email','') + '">' + content.get('email','') + '</a></div></div>' if content.get('email') else ''}
+                    {'<div class="contact-item"><div class="contact-icon">ðŸ“ž</div><div class="contact-detail"><h4>Phone</h4><a href="tel:' + content.get('phone','') + '">' + content.get('phone','') + '</a></div></div>' if content.get('phone') else ''}
+                    {'<div class="contact-item"><div class="contact-icon">âœ‰</div><div class="contact-detail"><h4>Email</h4><a href="mailto:' + content.get('email','') + '">' + content.get('email','') + '</a></div></div>' if content.get('email') else ''}
                     <div class="contact-item">
-                        <div class="contact-icon">📍</div>
+                        <div class="contact-icon">ðŸ“</div>
                         <div class="contact-detail">
                             <h4>Location</h4>
                             <p>{content.get('address', city + ', Nigeria')}</p>
                         </div>
                     </div>
-                    {'<div class="contact-item"><div class="contact-icon">📱</div><div class="contact-detail"><h4>Social Media</h4>' + ('<a href="' + ig_url + '" target="_blank">Instagram</a> &nbsp;' if ig_url else '') + ('<a href="' + fb_url + '" target="_blank">Facebook</a>' if fb_url else '') + '</div></div>' if ig_url or fb_url else ''}
+                    {'<div class="contact-item"><div class="contact-icon">ðŸ“±</div><div class="contact-detail"><h4>Social Media</h4>' + ('<a href="' + ig_url + '" target="_blank">Instagram</a> &nbsp;' if ig_url else '') + ('<a href="' + fb_url + '" target="_blank">Facebook</a>' if fb_url else '') + '</div></div>' if ig_url or fb_url else ''}
                     <a href="{wa_link}" class="whatsapp-cta" target="_blank">
-                        💬 Chat With Us on WhatsApp
+                        ðŸ’¬ Chat With Us on WhatsApp
                     </a>
                 </div>
                 <div class="contact-form fade-in">
@@ -1152,7 +1152,7 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
                         <textarea rows="4" placeholder="Your message..."></textarea>
                     </div>
                     <button class="form-submit" onclick="sendViaWhatsApp()">
-                        Send Message →
+                        Send Message â†’
                     </button>
                 </div>
             </div>
@@ -1164,18 +1164,18 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
         <div class="footer-content">
             <div class="footer-brand">{name}</div>
             <div class="footer-social">
-                {('<a href="' + wa_link + '" target="_blank">💬</a>') if wa_link else ''}
-                {('<a href="' + ig_url + '" target="_blank">📸</a>') if ig_url else ''}
-                {('<a href="' + fb_url + '" target="_blank">👍</a>') if fb_url else ''}
+                {('<a href="' + wa_link + '" target="_blank">ðŸ’¬</a>') if wa_link else ''}
+                {('<a href="' + ig_url + '" target="_blank">ðŸ“¸</a>') if ig_url else ''}
+                {('<a href="' + fb_url + '" target="_blank">ðŸ‘</a>') if fb_url else ''}
             </div>
         </div>
         <div class="footer-copy">
-            © {datetime.now().year} {name}. All rights reserved. | {city}, Nigeria
+            Â© {datetime.now().year} {name}. All rights reserved. | {city}, Nigeria
         </div>
     </footer>
 
     <!-- Floating WhatsApp -->
-    <a href="{wa_link}" class="float-wa" target="_blank" title="Chat with us">💬</a>
+    <a href="{wa_link}" class="float-wa" target="_blank" title="Chat with us">ðŸ’¬</a>
 
     <script>
         // Scroll animations
@@ -1222,26 +1222,26 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
     return html
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # MAIN BUILDER
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def build_sample_site(lead: dict) -> dict:
     name = lead["name"]
     niche = lead.get("niche", "business")
     safe_name = re.sub(r'[^a-z0-9]', '-', name.lower()).strip('-')
 
-    print(f"\n   🌐 Building sample site for: {name}")
+    print(f"\n   ðŸŒ Building sample site for: {name}")
 
     # Get theme
     theme = get_theme(niche)
-    print(f"   🎨 Theme: {niche} | Primary: {theme['primary']}")
+    print(f"   ðŸŽ¨ Theme: {niche} | Primary: {theme['primary']}")
 
     # Generate content
-    print(f"   ✍️  Generating personalized content...")
+    print(f"   âœï¸  Generating personalized content...")
     content = generate_site_content(lead)
 
     # Build HTML
-    print(f"   🔨 Building HTML site...")
+    print(f"   ðŸ”¨ Building HTML site...")
     html = build_html_site(lead, content, theme)
 
     # Save site
@@ -1265,7 +1265,7 @@ def build_sample_site(lead: dict) -> dict:
     with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2, ensure_ascii=False)
 
-    print(f"   ✅ Site built: {site_path}")
+    print(f"   âœ… Site built: {site_path}")
 
     return meta
 
@@ -1282,13 +1282,13 @@ def build_all_sites(
     # Filter leads
     if only_interested:
         leads = [l for l in leads if l.get("status") == "interested"]
-        print(f"\n🌐 Building sites for {len(leads)} interested leads")
+        print(f"\nðŸŒ Building sites for {len(leads)} interested leads")
     else:
         leads = [l for l in leads if not l.get("site_built")]
-        print(f"\n🌐 Building sites for {len(leads)} leads")
+        print(f"\nðŸŒ Building sites for {len(leads)} leads")
 
     if not leads:
-        print("✅ No leads need sites built")
+        print("âœ… No leads need sites built")
         return []
 
     print("=" * 55)
@@ -1305,7 +1305,7 @@ def build_all_sites(
             lead["site_path"] = meta["site_path"]
 
         except Exception as e:
-            print(f"\n   ❌ Failed: {str(e)[:80]}")
+            print(f"\n   âŒ Failed: {str(e)[:80]}")
             continue
 
     # Update leads file
@@ -1322,7 +1322,7 @@ def build_all_sites(
 
     # Summary
     print(f"\n{'='*55}")
-    print(f"🌐 SAMPLE SITES COMPLETE")
+    print(f"ðŸŒ SAMPLE SITES COMPLETE")
     print(f"{'='*55}")
     print(f"Sites built:    {len(results)}")
     print(f"Saved to:       results/sites/")

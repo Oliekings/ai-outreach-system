@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 import json
 import os
 import random
@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Smart client — uses Claude if funded, falls back to Groq automatically
+# Smart client â€” uses Claude if funded, falls back to Groq automatically
 def get_ai_response(prompt: str) -> str:
     try:
         claude = Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
@@ -20,8 +20,8 @@ def get_ai_response(prompt: str) -> str:
         )
         return response.content[0].text
     except Exception as e:
-        if "credit" in str(e).lower() or "balance" in str(e).lower():
-            print("   💡 Claude credits low — switching to Groq automatically...")
+        if True: # Fallback on any error
+            print("   ðŸ’¡ Claude credits low â€” switching to Groq automatically...")
             groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
             response = groq.chat.completions.create(
                 model="llama-3.3-70b-versatile",
@@ -117,7 +117,7 @@ async def audit_website(url: str, business_name: str) -> dict:
         page = await context.new_page()
 
         try:
-            print(f"  🌐 Visiting {url}...")
+            print(f"  ðŸŒ Visiting {url}...")
             import time
             start = time.time()
             await page.goto(url, timeout=15000, wait_until="domcontentloaded")
@@ -208,7 +208,7 @@ async def audit_website(url: str, business_name: str) -> dict:
 
         except Exception as e:
             audit_data["errors"].append(f"Desktop audit error: {str(e)}")
-            print(f"  ⚠️  Error auditing {url}: {e}")
+            print(f"  âš ï¸  Error auditing {url}: {e}")
 
         await context.close()
 
@@ -255,34 +255,34 @@ def generate_ai_audit_report(audit_data: dict) -> str:
     issues = []
 
     if audit_data["load_time_seconds"] and audit_data["load_time_seconds"] > 3:
-        issues.append(f"Slow load time ({audit_data['load_time_seconds']}s) — visitors leave after 3 seconds")
+        issues.append(f"Slow load time ({audit_data['load_time_seconds']}s) â€” visitors leave after 3 seconds")
 
     if not audit_data["is_mobile_friendly"]:
-        issues.append("Not mobile friendly — over 70% of customers browse on their phones")
+        issues.append("Not mobile friendly â€” over 70% of customers browse on their phones")
 
     if not audit_data["has_ssl"]:
-        issues.append("No SSL certificate — browser shows 'Not Secure' warning, scaring customers away")
+        issues.append("No SSL certificate â€” browser shows 'Not Secure' warning, scaring customers away")
 
     if not audit_data["has_contact_form"]:
-        issues.append("No contact form — visitors have no easy way to reach them")
+        issues.append("No contact form â€” visitors have no easy way to reach them")
 
     if not audit_data["has_whatsapp_button"]:
-        issues.append("No WhatsApp button — missing the #1 communication tool in Nigeria")
+        issues.append("No WhatsApp button â€” missing the #1 communication tool in Nigeria")
 
     if not audit_data["has_booking_system"]:
-        issues.append("No booking or reservation system — customers can't book online")
+        issues.append("No booking or reservation system â€” customers can't book online")
 
     if not audit_data["has_google_analytics"]:
-        issues.append("No Google Analytics — they have no idea how many people visit their site")
+        issues.append("No Google Analytics â€” they have no idea how many people visit their site")
 
     if not audit_data["has_social_links"]:
-        issues.append("No social media links — disconnected from their own audience")
+        issues.append("No social media links â€” disconnected from their own audience")
 
     if audit_data["missing_meta_tags"]:
-        issues.append(f"Missing SEO tags: {', '.join(audit_data['missing_meta_tags'])} — hurting Google ranking")
+        issues.append(f"Missing SEO tags: {', '.join(audit_data['missing_meta_tags'])} â€” hurting Google ranking")
 
     if audit_data["images_without_alt"] > 3:
-        issues.append(f"{audit_data['images_without_alt']} images missing descriptions — bad for SEO and accessibility")
+        issues.append(f"{audit_data['images_without_alt']} images missing descriptions â€” bad for SEO and accessibility")
 
     if not issues:
         issues.append("Website appears technically sound but could benefit from modern UI/UX improvements and AI-powered features")
@@ -301,7 +301,7 @@ Write a short, punchy audit report (max 150 words) that:
 2. Mentions the exact number of issues found
 3. Lists the 3 most critical issues in simple plain language (no jargon)
 4. Ends with a single clear call to action to reply for a free fix consultation
-5. Sounds human, warm and helpful — NOT salesy or robotic
+5. Sounds human, warm and helpful â€” NOT salesy or robotic
 6. Does NOT mention your own name or company
 
 Write it as the body of a follow-up email.
@@ -320,10 +320,10 @@ async def audit_all_leads(leads_file: str = "results/leads/leads.json"):
     leads_with_sites = [l for l in leads if l.get("has_website") and l.get("website")]
 
     if not leads_with_sites:
-        print("⚠️  No leads with websites found in leads.json")
+        print("âš ï¸  No leads with websites found in leads.json")
         return
 
-    print(f"\n🔍 Auditing {len(leads_with_sites)} websites...\n")
+    print(f"\nðŸ” Auditing {len(leads_with_sites)} websites...\n")
     print("=" * 50)
 
     audit_results = []
@@ -332,13 +332,13 @@ async def audit_all_leads(leads_file: str = "results/leads/leads.json"):
         name = lead["name"]
         url = lead["website"]
 
-        print(f"\n📋 Auditing: {name}")
+        print(f"\nðŸ“‹ Auditing: {name}")
         print(f"   URL: {url}")
 
         audit_data = await audit_website(url, name)
 
         if audit_data["errors"] and not audit_data["page_title"]:
-            print(f"   ⏭️  Skipping AI report — website unreachable")
+            print(f"   â­ï¸  Skipping AI report â€” website unreachable")
             continue
 
         ai_report = generate_ai_audit_report(audit_data)
@@ -365,16 +365,16 @@ async def audit_all_leads(leads_file: str = "results/leads/leads.json"):
             bool(audit_data["missing_meta_tags"]),
         ])
 
-        print(f"   ⚠️  Issues found: {issues_count}")
-        print(f"   📱 Mobile friendly: {'✅' if audit_data['is_mobile_friendly'] else '❌'}")
-        print(f"   🔒 SSL: {'✅' if audit_data['has_ssl'] else '❌'}")
-        print(f"   💬 WhatsApp button: {'✅' if audit_data['has_whatsapp_button'] else '❌'}")
-        print(f"   📅 Booking system: {'✅' if audit_data['has_booking_system'] else '❌'}")
-        print(f"   📊 Analytics: {'✅' if audit_data['has_google_analytics'] else '❌'}")
-        print(f"\n   📝 AI Report Preview:")
+        print(f"   âš ï¸  Issues found: {issues_count}")
+        print(f"   ðŸ“± Mobile friendly: {'âœ…' if audit_data['is_mobile_friendly'] else 'âŒ'}")
+        print(f"   ðŸ”’ SSL: {'âœ…' if audit_data['has_ssl'] else 'âŒ'}")
+        print(f"   ðŸ’¬ WhatsApp button: {'âœ…' if audit_data['has_whatsapp_button'] else 'âŒ'}")
+        print(f"   ðŸ“… Booking system: {'âœ…' if audit_data['has_booking_system'] else 'âŒ'}")
+        print(f"   ðŸ“Š Analytics: {'âœ…' if audit_data['has_google_analytics'] else 'âŒ'}")
+        print(f"\n   ðŸ“ AI Report Preview:")
         print(f"   {ai_report[:200]}...")
 
-        # Random delay between audits — be human
+        # Random delay between audits â€” be human
         await asyncio.sleep(random.uniform(2, 4))
 
     # Save results
@@ -383,7 +383,7 @@ async def audit_all_leads(leads_file: str = "results/leads/leads.json"):
         json.dump(audit_results, f, indent=2)
 
     print("\n" + "=" * 50)
-    print("📊 AUDIT COMPLETE")
+    print("ðŸ“Š AUDIT COMPLETE")
     print("=" * 50)
     print(f"Total websites audited: {len(audit_results)}")
     print(f"Results saved to: results/audits/audit_results.json")

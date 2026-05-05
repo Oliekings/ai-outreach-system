@@ -3,6 +3,10 @@ from anthropic import Anthropic
 import time
 import random
 
+import os
+import json
+import re
+from dotenv import load_dotenv
 load_dotenv()
 
 os.makedirs("results/emails", exist_ok=True)

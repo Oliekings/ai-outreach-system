@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 import json
 import os
 import re
@@ -17,9 +17,9 @@ os.makedirs("results/replies", exist_ok=True)
 os.makedirs("results/logs", exist_ok=True)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # AI CLIENT
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def get_ai_response(prompt: str, max_tokens: int = 1000) -> str:
     try:
         claude = Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
@@ -30,7 +30,7 @@ def get_ai_response(prompt: str, max_tokens: int = 1000) -> str:
         )
         return response.content[0].text
     except Exception as e:
-        if "credit" in str(e).lower() or "balance" in str(e).lower():
+        if True: # Fallback on any error
             groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
             response = groq.chat.completions.create(
                 model="llama-3.3-70b-versatile",
@@ -53,17 +53,17 @@ def safe_json(text: str) -> dict:
     return {}
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # CONFIG
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def load_config() -> dict:
     with open("ceo_config.json", "r") as f:
         return json.load(f)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # REPLY LOG
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def load_reply_log() -> dict:
     path = "results/replies/reply_log.json"
     if os.path.exists(path):
@@ -90,9 +90,9 @@ def already_processed(log: dict, message_id: str) -> bool:
     return any(r.get("message_id") == message_id for r in log["replies"])
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# LEAD FINDER — match reply to a lead
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# LEAD FINDER â€” match reply to a lead
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def find_lead_by_email(email_address: str) -> dict:
     """Find which lead sent this reply"""
     enriched_file = "results/leads/enriched_leads.json"
@@ -122,9 +122,9 @@ def find_lead_by_name_in_subject(subject: str, leads: list) -> dict:
     return {}
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # REPLY CLASSIFIER
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def classify_reply(reply_text: str, business_name: str) -> dict:
     """
     Classify reply intent and extract key information.
@@ -154,7 +154,7 @@ Intent definitions:
 - not_interested: They explicitly said no, not interested, or already have someone
 - question: They asked specific questions without committing either way
 - out_of_office: Auto-reply, vacation, or out of office message
-- other: Anything else — wrong person, bounce, unclear
+- other: Anything else â€” wrong person, bounce, unclear
 """
     try:
         response = get_ai_response(prompt, max_tokens=500)
@@ -162,7 +162,7 @@ Intent definitions:
         if result:
             return result
     except Exception as e:
-        print(f"   ⚠️  Classification failed: {e}")
+        print(f"   âš ï¸  Classification failed: {e}")
 
     # Fallback classification using keywords
     text_lower = reply_text.lower()
@@ -196,9 +196,9 @@ Intent definitions:
             "sentiment": "neutral", "summary": "Unclear intent"}
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # REPLY DRAFTER
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def draft_reply(
     classification: dict,
     lead: dict,
@@ -247,8 +247,8 @@ Write a reply that:
 1. Opens with "{greeting}" and genuine warmth
 2. Acknowledges their specific reply naturally
 3. Answers any questions they asked directly
-4. If we built a sample site — mention it naturally and offer to share it
-5. Suggests a quick 15-minute call — include Calendly link if available
+4. If we built a sample site â€” mention it naturally and offer to share it
+5. Suggests a quick 15-minute call â€” include Calendly link if available
 6. Ends warmly and personally
 7. Maximum 150 words
 8. Sounds like a real human expert, not a salesperson
@@ -279,11 +279,11 @@ Context:
 Write a reply that:
 1. Opens with "{greeting}"
 2. Answers each question clearly and specifically
-3. Makes them feel genuinely helped — not sold to
-4. If they asked about pricing — give a range naturally
-   (basic website ₦{config['services']['basic_website_ngn']:,},
-    full package ₦{config['services']['full_package_ngn']:,},
-    monthly retainer ₦{config['services']['monthly_retainer_ngn']:,})
+3. Makes them feel genuinely helped â€” not sold to
+4. If they asked about pricing â€” give a range naturally
+   (basic website â‚¦{config['services']['basic_website_ngn']:,},
+    full package â‚¦{config['services']['full_package_ngn']:,},
+    monthly retainer â‚¦{config['services']['monthly_retainer_ngn']:,})
 5. Ends with a soft invitation to chat more
 6. Maximum 180 words
 
@@ -308,11 +308,11 @@ Context:
 
 Write a reply that:
 1. Opens with "{greeting}"
-2. Completely respects their decision — zero pressure
+2. Completely respects their decision â€” zero pressure
 3. Genuinely wishes them well and compliments something real about their business
 4. Leaves the door open warmly for the future
 5. Asks softly if they know anyone who might benefit (referral seed)
-6. Maximum 80 words — short and genuine
+6. Maximum 80 words â€” short and genuine
 7. Feels like it came from a real person who genuinely cares
 
 Return ONLY valid JSON:
@@ -325,7 +325,7 @@ Return ONLY valid JSON:
 """
 
     elif intent == "out_of_office":
-        # No reply needed — just log it
+        # No reply needed â€” just log it
         return {
             "subject": None,
             "body": None,
@@ -367,7 +367,7 @@ Return ONLY valid JSON:
             result["action"] = "send_reply"
             return result
     except Exception as e:
-        print(f"   ⚠️  Draft failed: {e}")
+        print(f"   âš ï¸  Draft failed: {e}")
 
     return {
         "subject": f"Re: Your message",
@@ -378,9 +378,9 @@ Return ONLY valid JSON:
     }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# EMAIL MONITOR — checks Gmail/IMAP for replies
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# EMAIL MONITOR â€” checks Gmail/IMAP for replies
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def fetch_email_replies(since_days: int = 3) -> list:
     """Fetch recent emails from inbox via IMAP"""
     replies = []
@@ -390,12 +390,12 @@ def fetch_email_replies(since_days: int = 3) -> list:
     imap_pass = os.getenv("IMAP_PASS") or os.getenv("IMAP_PASSWORD")
 
     if not imap_user or not imap_pass:
-        print("   ⚠️  IMAP credentials not configured")
+        print("   âš ï¸  IMAP credentials not configured")
         print("   Add IMAP_USER and IMAP_PASS to .env")
         return replies
 
     try:
-        print(f"   📬 Connecting to {imap_host}...")
+        print(f"   ðŸ“¬ Connecting to {imap_host}...")
         mail = imaplib.IMAP4_SSL(imap_host)
         mail.login(imap_user, imap_pass)
         mail.select("INBOX")
@@ -405,11 +405,11 @@ def fetch_email_replies(since_days: int = 3) -> list:
         status, messages = mail.search(None, f'SINCE {since_date}')
 
         if status != "OK":
-            print("   ⚠️  Could not search inbox")
+            print("   âš ï¸  Could not search inbox")
             return replies
 
         email_ids = messages[0].split()
-        print(f"   📬 Found {len(email_ids)} emails to check")
+        print(f"   ðŸ“¬ Found {len(email_ids)} emails to check")
 
         for email_id in email_ids:
             try:
@@ -476,26 +476,26 @@ def fetch_email_replies(since_days: int = 3) -> list:
                 })
 
             except Exception as e:
-                print(f"   ⚠️  Error reading email: {str(e)[:60]}")
+                print(f"   âš ï¸  Error reading email: {str(e)[:60]}")
                 continue
 
         mail.logout()
-        print(f"   ✅ Fetched {len(replies)} replies from inbox")
+        print(f"   âœ… Fetched {len(replies)} replies from inbox")
 
     except imaplib.IMAP4.error as e:
-        print(f"   ❌ IMAP connection failed: {str(e)[:100]}")
+        print(f"   âŒ IMAP connection failed: {str(e)[:100]}")
         print("   Check IMAP_HOST, IMAP_USER, IMAP_PASS in .env")
     except Exception as e:
-        print(f"   ❌ Email fetch failed: {str(e)[:100]}")
+        print(f"   âŒ Email fetch failed: {str(e)[:100]}")
 
     return replies
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # PROCESS AND HANDLE REPLIES
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def process_replies(replies: list, dry_run: bool = False) -> dict:
-    """Process all fetched replies — classify, draft responses, update leads"""
+    """Process all fetched replies â€” classify, draft responses, update leads"""
     config = load_config()
     log = load_reply_log()
 
@@ -526,7 +526,7 @@ def process_replies(replies: list, dry_run: bool = False) -> dict:
         body = reply["body"]
         channel = reply["channel"]
 
-        print(f"\n   📨 Processing reply from: {from_email}")
+        print(f"\n   ðŸ“¨ Processing reply from: {from_email}")
         print(f"   Subject: {subject[:60]}")
 
         # Find matching lead
@@ -535,25 +535,25 @@ def process_replies(replies: list, dry_run: bool = False) -> dict:
             lead = find_lead_by_name_in_subject(subject, all_leads)
 
         if not lead:
-            print(f"   ⚠️  No matching lead found — logging as unknown")
+            print(f"   âš ï¸  No matching lead found â€” logging as unknown")
             lead = {
                 "name": reply.get("from_name") or from_email,
                 "contact_email": from_email
             }
 
         business_name = lead.get("name", from_email)
-        print(f"   🏢 Matched to: {business_name}")
+        print(f"   ðŸ¢ Matched to: {business_name}")
 
         # Classify the reply
-        print(f"   🧠 Classifying intent...")
+        print(f"   ðŸ§  Classifying intent...")
         classification = classify_reply(body, business_name)
         intent = classification.get("intent", "other")
         confidence = classification.get("confidence", "low")
-        print(f"   📊 Intent: {intent} ({confidence} confidence)")
-        print(f"   💬 Summary: {classification.get('summary', '')}")
+        print(f"   ðŸ“Š Intent: {intent} ({confidence} confidence)")
+        print(f"   ðŸ’¬ Summary: {classification.get('summary', '')}")
 
         # Draft response
-        print(f"   ✍️  Drafting response...")
+        print(f"   âœï¸  Drafting response...")
         drafted = draft_reply(classification, lead, body, config)
 
         # Build full reply record
@@ -599,12 +599,12 @@ def process_replies(replies: list, dry_run: bool = False) -> dict:
 
         # Print draft preview
         if drafted.get("body"):
-            print(f"   📝 Draft: {drafted['body'][:120]}...")
+            print(f"   ðŸ“ Draft: {drafted['body'][:120]}...")
 
         if not dry_run:
-            print(f"   ✅ Reply queued — status: {reply_record['status']}")
+            print(f"   âœ… Reply queued â€” status: {reply_record['status']}")
         else:
-            print(f"   🔍 DRY RUN — would queue reply")
+            print(f"   ðŸ” DRY RUN â€” would queue reply")
 
     # Save everything
     save_reply_log(log)
@@ -618,14 +618,14 @@ def process_replies(replies: list, dry_run: bool = False) -> dict:
         review_file = f"results/replies/pending_review_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
         with open(review_file, "w", encoding="utf-8") as f:
             json.dump(processed_replies, f, indent=2, ensure_ascii=False)
-        print(f"\n   💾 Replies saved for review: {review_file}")
+        print(f"\n   ðŸ’¾ Replies saved for review: {review_file}")
 
     return stats
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # SEND QUEUED REPLIES
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def send_queued_replies(dry_run: bool = False):
     """Send all replies that have been reviewed and approved"""
     import smtplib
@@ -648,7 +648,7 @@ def send_queued_replies(dry_run: bool = False):
         and not r.get("action_taken")
     ]
 
-    print(f"\n📤 Sending {len(ready_replies)} queued replies...")
+    print(f"\nðŸ“¤ Sending {len(ready_replies)} queued replies...")
 
     for reply in ready_replies:
         drafted = reply["drafted_reply"]
@@ -659,10 +659,10 @@ def send_queued_replies(dry_run: bool = False):
         if not body or not to_email:
             continue
 
-        print(f"\n   📧 Replying to: {reply['business']} ({to_email})")
+        print(f"\n   ðŸ“§ Replying to: {reply['business']} ({to_email})")
 
         if dry_run:
-            print(f"   🔍 DRY RUN — Subject: {subject}")
+            print(f"   ðŸ” DRY RUN â€” Subject: {subject}")
             print(f"   Body: {body[:100]}...")
             continue
 
@@ -683,52 +683,52 @@ def send_queued_replies(dry_run: bool = False):
             reply["action_taken"] = "replied"
             reply["reply_sent_at"] = datetime.now().isoformat()
             reply["status"] = "replied"
-            print(f"   ✅ Reply sent")
+            print(f"   âœ… Reply sent")
 
         except Exception as e:
-            print(f"   ❌ Failed: {str(e)[:80]}")
+            print(f"   âŒ Failed: {str(e)[:80]}")
             reply["action_taken"] = "failed"
             reply["error"] = str(e)[:100]
 
     save_reply_log(log)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # MAIN MONITOR
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def run_reply_monitor(dry_run: bool = False, send_replies: bool = False):
-    print(f"\n📬 REPLY MONITOR")
+    print(f"\nðŸ“¬ REPLY MONITOR")
     print(f"{'='*55}")
     print(f"Time:         {datetime.now().strftime('%A %d %B %Y, %I:%M %p')}")
     print(f"Dry run:      {dry_run}")
     print(f"{'='*55}\n")
 
     # Fetch email replies
-    print("📧 Checking email inbox...")
+    print("ðŸ“§ Checking email inbox...")
     email_replies = fetch_email_replies(since_days=7)
 
     all_replies = email_replies
 
     if not all_replies:
-        print("\n✅ No new replies found")
+        print("\nâœ… No new replies found")
     else:
-        print(f"\n📨 Processing {len(all_replies)} replies...\n")
+        print(f"\nðŸ“¨ Processing {len(all_replies)} replies...\n")
         stats = process_replies(all_replies, dry_run=dry_run)
 
         print(f"\n{'='*55}")
-        print(f"📊 REPLY MONITOR SUMMARY")
+        print(f"ðŸ“Š REPLY MONITOR SUMMARY")
         print(f"{'='*55}")
         print(f"Total processed:    {stats['processed']}")
-        print(f"Interested:         {stats.get('interested', 0)} 🔥")
-        print(f"Questions:          {stats.get('question', 0)} ❓")
-        print(f"Not interested:     {stats.get('not_interested', 0)} ❌")
-        print(f"Out of office:      {stats.get('out_of_office', 0)} 📅")
+        print(f"Interested:         {stats.get('interested', 0)} ðŸ”¥")
+        print(f"Questions:          {stats.get('question', 0)} â“")
+        print(f"Not interested:     {stats.get('not_interested', 0)} âŒ")
+        print(f"Out of office:      {stats.get('out_of_office', 0)} ðŸ“…")
         print(f"Other:              {stats.get('other', 0)}")
         print(f"{'='*55}")
 
     # Send queued replies
     if send_replies:
-        print(f"\n📤 Sending queued replies...")
+        print(f"\nðŸ“¤ Sending queued replies...")
         send_queued_replies(dry_run=dry_run)
 
     # Show interested leads summary
@@ -740,10 +740,10 @@ def run_reply_monitor(dry_run: bool = False, send_replies: bool = False):
     ]
 
     if interested:
-        print(f"\n🔥 HOT LEADS NEEDING ATTENTION:")
+        print(f"\nðŸ”¥ HOT LEADS NEEDING ATTENTION:")
         print(f"{'='*55}")
         for r in interested:
-            print(f"  • {r['business']}")
+            print(f"  â€¢ {r['business']}")
             print(f"    Email: {r['from_email']}")
             print(f"    Reply: {r['body_preview'][:80]}...")
             print(f"    Status: {r['status']}")

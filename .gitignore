@@ -47,3 +47,6 @@ Thumbs.db
 # IDEs
 .vscode/
 .idea/
+
+# Sessions
+.ig_session/
