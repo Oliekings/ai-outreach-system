@@ -1,6 +1,44 @@
 import os
 import json
+import sys
 from datetime import datetime
+
+class Symbol:
+    """Clean logging symbols that work across all terminals"""
+    USE_EMOJI = False # Set to True if your terminal supports UTF-8 emojis
+    
+    LIST = "📋" if USE_EMOJI else "[LIST]"
+    LEAD = "💎" if USE_EMOJI else "[LEAD]"
+    SEARCH = "🔍" if USE_EMOJI else "[SEARCH]"
+    STOP = "🛑" if USE_EMOJI else "[STOP]"
+    CHECK = "✅" if USE_EMOJI else "[OK]"
+    WORLD = "🌍" if USE_EMOJI else "[WORLD]"
+    WARN = "⚠️" if USE_EMOJI else "[WARN]"
+    AI = "🧠" if USE_EMOJI else "[AI]"
+    VIBE = "🎨" if USE_EMOJI else "[VIBE]"
+    TONE = "🗣️" if USE_EMOJI else "[TONE]"
+    PRIDE = "🆕" if USE_EMOJI else "[PRIDE]"
+    TARGET = "🎯" if USE_EMOJI else "[TARGET]"
+    TIME = "⏰" if USE_EMOJI else "[TIME]"
+    NURTURE = "🌱" if USE_EMOJI else "[NURTURE]"
+    REFERRAL = "🤝" if USE_EMOJI else "[REFERRAL]"
+    EMAIL = "📧" if USE_EMOJI else "[EMAIL]"
+    PHONE = "📞" if USE_EMOJI else "[PHONE]"
+    WHATSAPP = "💬" if USE_EMOJI else "[WHATSAPP]"
+    SOCIAL = "📱" if USE_EMOJI else "[SOCIAL]"
+    INSTAGRAM = "📸" if USE_EMOJI else "[INSTAGRAM]"
+    FACEBOOK = "📘" if USE_EMOJI else "[FACEBOOK]"
+    RETRY = "🔄" if USE_EMOJI else "[RETRY]"
+    BOT = "🛡️" if USE_EMOJI else "[BOT-WALL]"
+    WAIT = "⏳" if USE_EMOJI else "[WAIT]"
+    PITCH = "💡" if USE_EMOJI else "[PITCH]"
+    PAGE = "📄" if USE_EMOJI else "[PAGE]"
+    MAPS = "📍" if USE_EMOJI else "[MAPS]"
+    ERROR = "❌" if USE_EMOJI else "[ERROR]"
+    HUMAN = "🧑" if USE_EMOJI else "[USER]"
+
+
+sys.stdout.reconfigure(encoding='utf-8')
 
 def review_all_pending_messages() -> dict:
     """
@@ -21,7 +59,7 @@ def review_all_pending_messages() -> dict:
         return results
         
     try:
-        with open(pending_file, "r") as f:
+        with open(pending_file, "r", encoding="utf-8") as f:
             messages = json.load(f)
     except:
         return results
@@ -49,7 +87,7 @@ def review_all_pending_messages() -> dict:
         reviewed_messages.append(msg)
         
     # Save reviewed messages back
-    with open(pending_file, "w") as f:
-        json.dump(reviewed_messages, f, indent=2)
+    with open(pending_file, "w", encoding="utf-8") as f:
+        json.dump(reviewed_messages, f, indent=2, ensure_ascii=False)
         
     return results

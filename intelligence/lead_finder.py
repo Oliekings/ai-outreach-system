@@ -3,100 +3,98 @@ import random
 import json
 import os
 import re
+import sys
 from playwright.async_api import async_playwright
 from dotenv import load_dotenv
 from datetime import datetime
 
+sys.stdout.reconfigure(encoding='utf-8')
 load_dotenv()
+
+class Symbol:
+    """Clean logging symbols that work across all terminals"""
+    USE_EMOJI = False # Set to True if your terminal supports UTF-8 emojis
+    
+    LIST = "📋" if USE_EMOJI else "[LIST]"
+    LEAD = "💎" if USE_EMOJI else "[LEAD]"
+    SEARCH = "🔍" if USE_EMOJI else "[SEARCH]"
+    STOP = "🛑" if USE_EMOJI else "[STOP]"
+    CHECK = "✅" if USE_EMOJI else "[OK]"
+    WORLD = "🌍" if USE_EMOJI else "[WORLD]"
+    WARN = "⚠️" if USE_EMOJI else "[WARN]"
+    AI = "🧠" if USE_EMOJI else "[AI]"
+    VIBE = "🎨" if USE_EMOJI else "[VIBE]"
+    TONE = "🗣️" if USE_EMOJI else "[TONE]"
+    PRIDE = "🆕" if USE_EMOJI else "[PRIDE]"
+    TARGET = "🎯" if USE_EMOJI else "[TARGET]"
+    TIME = "⏰" if USE_EMOJI else "[TIME]"
+    NURTURE = "🌱" if USE_EMOJI else "[NURTURE]"
+    REFERRAL = "🤝" if USE_EMOJI else "[REFERRAL]"
+    EMAIL = "📧" if USE_EMOJI else "[EMAIL]"
+    PHONE = "📞" if USE_EMOJI else "[PHONE]"
+    WHATSAPP = "💬" if USE_EMOJI else "[WHATSAPP]"
+    SOCIAL = "📱" if USE_EMOJI else "[SOCIAL]"
+    INSTAGRAM = "📸" if USE_EMOJI else "[INSTAGRAM]"
+    FACEBOOK = "📘" if USE_EMOJI else "[FACEBOOK]"
+    RETRY = "🔄" if USE_EMOJI else "[RETRY]"
+    BOT = "🛡️" if USE_EMOJI else "[BOT-WALL]"
+    WAIT = "⏳" if USE_EMOJI else "[WAIT]"
+    PITCH = "💡" if USE_EMOJI else "[PITCH]"
+    PAGE = "📄" if USE_EMOJI else "[PAGE]"
+    MAPS = "📍" if USE_EMOJI else "[MAPS]"
+    ERROR = "❌" if USE_EMOJI else "[ERROR]"
+    HUMAN = "🧑" if USE_EMOJI else "[USER]" if USE_EMOJI else "[PAGE]"
+    MAPS = "{Symbol.MAPS}" if USE_EMOJI else "[MAPS]"
+    ERROR = "{Symbol.ERROR}" if USE_EMOJI else "[ERROR]"
+    HUMAN = "{Symbol.HUMAN}" if USE_EMOJI else "[USER]"
 
 async def scrape_google_maps(query: str, max_results: int = 20):
     leads = []
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=False,
-            args=[
-                "--disable-blink-features=AutomationControlled",
-                "--start-maximized"
-            ]
-        )
+        browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(
             viewport={"width": 1280, "height": 800},
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         )
-
-        # Mask automation signals with advanced stealth script
-        await context.add_init_script("""
-            // 1. Hide webdriver
-            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-            
-            // 2. Add full chrome object
-            window.chrome = {
-                app: {
-                    isInstalled: false,
-                    InstallState: { DISABLED: 'DISABLED', INSTALLED: 'INSTALLED', NOT_INSTALLED: 'NOT_INSTALLED' },
-                    RunningState: { CANNOT_RUN: 'CANNOT_RUN', RUNNING: 'RUNNING', CAN_RUN: 'CAN_RUN' }
-                },
-                csi: () => {},
-                loadTimes: () => {},
-                runtime: {
-                    OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' },
-                    OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },
-                    PlatformArch: { ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
-                    PlatformNaclArch: { ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
-                    PlatformOs: { ANDROID: 'android', CROS: 'cros', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win' },
-                    RequestUpdateCheckStatus: { NO_UPDATE: 'no_update', THROTTLED: 'throttled', UPDATE_AVAILABLE: 'update_available' }
-                }
-            };
-
-            // 3. Spoof plugins
-            Object.defineProperty(navigator, 'plugins', {
-                get: () => [
-                    { description: "Portable Document Format", filename: "internal-pdf-viewer", name: "Chrome PDF Viewer" },
-                    { description: "", filename: "mhjfbmdgcfjbbpaeojofohoefgieoano", name: "Chromium PDF Viewer" },
-                    { description: "", filename: "internal-pdf-viewer", name: "Microsoft Edge PDF Viewer" },
-                    { description: "", filename: "internal-pdf-viewer", name: "PDF Viewer" },
-                    { description: "", filename: "internal-pdf-viewer", name: "WebKit built-in PDF" }
-                ]
-            });
-
-            // 4. Spoof permissions
-            if (window.navigator.permissions) {
-                const originalQuery = window.navigator.permissions.query;
-                window.navigator.permissions.query = (parameters) => (
-                    parameters.name === 'notifications' ?
-                        Promise.resolve({ state: Notification.permission }) :
-                        originalQuery(parameters)
-                );
-            }
-
-            // 5. Hardware concurrency and memory
-            Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
-            Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
-        """)
         page = await context.new_page()
 
-        print(f"\n🔍 Searching Google Maps for: {query}")
-        await page.goto(f"https://www.google.com/maps/search/{query.replace(' ', '+')}")
-        await page.wait_for_timeout(random.randint(2500, 5000))
+        print(f"\n{Symbol.SEARCH} Searching Google Maps for: {query}")
+        await page.goto(f"https://www.google.com/maps/search/{query.replace(' ', '+')}", wait_until="domcontentloaded")
+        
+        # Wait for the main UI to settle
+        await page.wait_for_timeout(5000)
 
         # Auto-handle Google consent popup
         try:
-            consent_button = await page.query_selector('button[aria-label="Accept all"]')
-            if not consent_button:
-                consent_button = await page.query_selector('button[jsname="b3VHJd"]')
-            if consent_button:
-                await consent_button.click()
-                print("✅ Google consent handled automatically")
-                await page.wait_for_timeout(2000)
+            consent_selectors = [
+                'button[aria-label="Accept all"]',
+                'button[jsname="b3VHJd"]',
+                '#L2AGLb', '.QS5gu',
+                'button:has-text("Accept all")',
+                'button:has-text("I agree")',
+                'button:has-text("Accept")',
+                'button:has-text("Allow all")',
+            ]
+            for sel in consent_selectors:
+                btn = await page.query_selector(sel)
+                if btn:
+                    await btn.click()
+                    print(f"{Symbol.CHECK} Google consent handled automatically")
+                    await page.wait_for_timeout(5000)
+                    break
         except:
             pass
+
+        # Give it a good 10 seconds to load results
+        print(f"{Symbol.WAIT} Waiting for listings to populate...")
+        await page.wait_for_timeout(10000)
 
         # Human-like scrolling with random pauses
         try:
             results_panel = await page.query_selector('div[role="feed"]')
             if results_panel:
-                print("🧑 Scrolling like a human...")
+                print(f"{Symbol.HUMAN} Scrolling like a human...")
                 for _ in range(10):
                     # Random scroll distance like a real person
                     scroll_distance = random.randint(400, 900)
@@ -105,14 +103,36 @@ async def scrape_google_maps(query: str, max_results: int = 20):
                     # Random pause between scrolls (1.5 to 4 seconds)
                     pause = random.uniform(1.5, 4.0)
                     await page.wait_for_timeout(int(pause * 1000))
-                print("✅ Scrolled results panel successfully")
+                print(f"{Symbol.CHECK} Scrolled results panel successfully")
         except:
-            print("⚠️  Could not scroll panel, continuing with visible results")
+            print(f"{Symbol.WARN} Could not scroll panel, continuing with visible results")
 
 
         # Grab all business listing elements
-        listings = await page.query_selector_all('a[href*="/maps/place/"]')
-        print(f"📍 Found {len(listings)} listings, extracting details...\n")
+        # 1. Try multiple selectors for listings
+        selectors = [
+            'a[href*="/maps/place/"]',
+            'div[role="article"] a',
+            'div.m67q60-V67S5c-haAclf a', # Common maps listing class
+            '[aria-label*="Results for"] a'
+        ]
+        
+        listings = []
+        for selector in selectors:
+            listings = await page.query_selector_all(selector)
+            if listings:
+                print(f"{Symbol.CHECK} Found {len(listings)} listings using selector: {selector}")
+                break
+        
+        if not listings:
+            print(f"{Symbol.ERROR} No listings found with any selector. Saving debug screenshot...")
+            os.makedirs("results/logs", exist_ok=True)
+            await page.screenshot(path="results/logs/maps_fail.png")
+            # Also dump HTML for deep debugging
+            with open("results/logs/maps_fail.html", "w", encoding="utf-8") as f:
+                f.write(await page.content())
+        
+        print(f"{Symbol.MAPS} Found {len(listings)} listings, extracting details...\n")
 
         seen = set()
 
@@ -170,14 +190,14 @@ async def scrape_google_maps(query: str, max_results: int = 20):
                 lead["opportunity_score"] = score_lead(lead)
 
                 leads.append(lead)
-                print(f"✅ {name}")
-                print(f"   📞 {lead['phone'] or 'No phone found'}")
-                print(f"   🌐 {'Has website' if lead['has_website'] else '⚠️  NO WEBSITE - Hot lead!'}")
+                print(f"{Symbol.CHECK} {name}")
+                print(f"   {Symbol.PHONE} {lead['phone'] or 'No phone found'}")
+                print(f"   {Symbol.CHECK} {'Has website' if lead['has_website'] else '[NO WEBSITE] - Hot lead!'}")
                 print(f"   ⭐ {lead['rating']} ({lead['reviews']} reviews)")
-                print(f"   🎯 Opportunity Score: {lead['opportunity_score']}/10\n")
+                print(f"   {Symbol.SEARCH} Opportunity Score: {lead['opportunity_score']}/10\n")
 
             except Exception as e:
-                print(f"⚠️  Skipped one listing: {e}")
+                print(f"{Symbol.WARN}  Skipped one listing: {e}")
                 continue
 
         await browser.close()
@@ -209,24 +229,28 @@ def score_lead(lead: dict) -> int:
 
 def save_leads(leads: list, filename: str = "results/leads/leads.json"):
     os.makedirs(os.path.dirname(filename), exist_ok=True)
-    with open(filename, "w") as f:
-        json.dump(leads, f, indent=2)
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(leads, f, indent=2, ensure_ascii=False)
     print(f"\n💾 {len(leads)} leads saved to {filename}")
 
 
 def load_config(path: str = "ceo_config.json") -> dict:
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def load_progress() -> dict:
-    """Track which niches have been done and which businesses already found"""
+    """Track which niches and cities have been done and which businesses already found"""
     progress_file = "results/leads/progress.json"
     if os.path.exists(progress_file):
-        with open(progress_file, "r") as f:
-            return json.load(f)
+        with open(progress_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if "completed_cities" not in data:
+                data["completed_cities"] = []
+            return data
     return {
         "completed_niches": [],
+        "completed_cities": [],
         "current_niche_index": 0,
         "all_business_names": [],
         "total_leads_found": 0,
@@ -236,8 +260,8 @@ def load_progress() -> dict:
 
 def save_progress(progress: dict):
     os.makedirs("results/leads", exist_ok=True)
-    with open("results/leads/progress.json", "w") as f:
-        json.dump(progress, f, indent=2)
+    with open("results/leads/progress.json", "w", encoding="utf-8") as f:
+        json.dump(progress, f, indent=2, ensure_ascii=False)
 
 
 def get_todays_niche(config: dict, progress: dict) -> str:
@@ -257,10 +281,26 @@ def get_todays_niche(config: dict, progress: dict) -> str:
 
     if not remaining:
         # All niches done — reset and start over
-        print("✅ All niches completed — resetting rotation for next cycle")
+        print(f"{Symbol.CHECK} All niches completed — resetting rotation for next cycle")
         progress["completed_niches"] = []
         save_progress(progress)
         return niches[0]
+
+    return remaining[0]
+
+
+def get_todays_city(config: dict, progress: dict) -> str:
+    """Pick the next city in rotation — never repeat until all done"""
+    cities = config["outreach"]["cities"]
+    completed = progress.get("completed_cities", [])
+    remaining = [c for c in cities if c not in completed]
+
+    if not remaining:
+        # All cities done — reset and start over
+        print(f"{Symbol.CHECK} All cities completed — resetting city rotation for next cycle")
+        progress["completed_cities"] = []
+        save_progress(progress)
+        return cities[0]
 
     return remaining[0]
 
@@ -269,25 +309,42 @@ def load_existing_leads() -> list:
     """Load existing leads to avoid duplicates"""
     path = "results/leads/leads.json"
     if os.path.exists(path):
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     return []
 
 
 async def main():
+    # Check if there are already 10 or more leads with pending/active outreach messages
+    master_seq_path = "results/messages/sequences/master_sequence.json"
+    if os.path.exists(master_seq_path):
+        try:
+            with open(master_seq_path, "r", encoding="utf-8") as f:
+                master_seq = json.load(f)
+            pending_leads_count = sum(
+                1 for lead_seq in master_seq
+                if any(step.get("status") in ["approved", "queued"] for step in lead_seq.get("sequence", []))
+            )
+            if pending_leads_count >= 10:
+                print(f"\n{Symbol.WARN} Outreach backlog has {pending_leads_count} pending leads (limit is 10).")
+                print("⚠️  Skipping lead discovery today to prevent accumulation of extra leads when outreach is not yet fully functional.\n")
+                return
+        except Exception as e:
+            print(f"⚠️  Could not check outreach backlog: {e}")
+
     config = load_config()
     progress = load_progress()
 
-    city = config["outreach"]["cities"][0]
+    city = get_todays_city(config, progress)
     daily_limit = 10  # Always exactly 10 leads per run
 
     # Pick today's niche
     niche = get_todays_niche(config, progress)
     print(f"\n{'='*55}")
-    print(f"🎯 TODAY'S NICHE: {niche.upper()}")
-    print(f"🌍 CITY: {city}")
-    print(f"🎯 TARGET: {daily_limit} fresh leads")
-    print(f"📅 DATE: {datetime.now().strftime('%A, %d %B %Y')}")
+    print(f"{Symbol.SEARCH} TODAY'S NICHE: {niche.upper()}")
+    print(f"{Symbol.MAPS} CITY: {city}")
+    print(f"{Symbol.SEARCH} TARGET: {daily_limit} fresh leads")
+    print(f"{Symbol.WAIT} DATE: {datetime.now().strftime('%A, %d %B %Y')}")
     print(f"{'='*55}\n")
 
     # Load existing leads to avoid duplicates
@@ -297,7 +354,7 @@ async def main():
 
     country = config["outreach"].get("country", "Nigeria")
     query = f"{niche} in {city} {country}"
-    print(f"🔍 Searching: {query}")
+    print(f"{Symbol.SEARCH} Searching: {query}")
 
     # Scrape more than we need so we can filter duplicates
     raw_leads = await scrape_google_maps(query, max_results=30)
@@ -326,9 +383,10 @@ async def main():
                 break
 
     if not fresh_leads:
-        print(f"\n⚠️  No fresh leads found for {niche} in {city}")
-        print(f"   Moving this niche to completed and trying tomorrow")
+        print(f"\n{Symbol.WARN} No fresh leads found for {niche} in {city}")
+        print(f"   Moving this niche/city to completed and trying tomorrow")
         progress["completed_niches"].append(niche)
+        progress["completed_cities"].append(city)
         save_progress(progress)
         return
 
@@ -336,7 +394,7 @@ async def main():
     fresh_leads.sort(key=lambda x: x["opportunity_score"], reverse=True)
     todays_leads = fresh_leads[:daily_limit]
 
-    print(f"\n✅ Found {len(todays_leads)} fresh leads for today\n")
+    print(f"\n{Symbol.CHECK} Found {len(todays_leads)} fresh leads for today\n")
 
     # Merge with existing leads
     all_leads = existing_leads + todays_leads
@@ -348,6 +406,7 @@ async def main():
 
     progress["all_business_names"] = list(all_known_names)
     progress["completed_niches"].append(niche)
+    progress["completed_cities"].append(city)
     progress["total_leads_found"] = progress.get("total_leads_found", 0) + len(todays_leads)
     progress["runs"].append({
         "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -371,11 +430,12 @@ async def main():
     print(f"Has website (audit):  {len(has_website)}")
     print(f"Total leads overall:  {len(all_leads)}")
     print(f"Next niche tomorrow:  {get_todays_niche(config, progress)}")
-    print("="*55)
-    print(f"\n📋 TODAY'S LEADS:")
+    print(f"Next city tomorrow:   {get_todays_city(config, progress)}")
+    print(f"="*55)
+    print(f"\n{Symbol.LIST} TODAY'S LEADS:")
     for i, lead in enumerate(todays_leads, 1):
-        website_status = "Has website" if lead["has_website"] else "⚠️  NO WEBSITE"
-        print(f"  {i:2}. {lead['name'][:40]:<40} {website_status}")
+        website_status = "Has website" if lead["has_website"] else "[NO WEBSITE]"
+        print(f"   {i:2}. {lead['name'][:40]:<40} {website_status}")
     print(f"\n💾 Saved to results/leads/leads.json")
     print(f"▶️  Next step: python lead_enricher.py")
 

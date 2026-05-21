@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import json
 import os
 import random
@@ -9,27 +9,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Smart client â€” uses Claude if funded, falls back to Groq automatically
-def get_ai_response(prompt: str) -> str:
-    try:
-        claude = Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
-        response = claude.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=400,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return response.content[0].text
-    except Exception as e:
-        if True: # Fallback on any error
-            print("   ðŸ’¡ Claude credits low â€” switching to Groq automatically...")
-            groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
-            response = groq.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                max_tokens=400,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            return response.choices[0].message.content
-        raise e
+def get_ai_response(prompt: str, max_tokens: int = 1000) -> str:
+    from utils.ai_client import ai_response
+    return ai_response(prompt, task="audit", max_tokens=max_tokens)
 
 
 async def audit_website(url: str, business_name: str) -> dict:
@@ -319,16 +301,37 @@ async def audit_all_leads(leads_file: str = "results/leads/leads.json"):
     # Only audit businesses with websites
     leads_with_sites = [l for l in leads if l.get("has_website") and l.get("website")]
 
-    if not leads_with_sites:
-        print("âš ï¸  No leads with websites found in leads.json")
-        return
+    existing_audits = {}
+    audit_results_file = "results/audits/audit_results.json"
+    if os.path.exists(audit_results_file):
+        try:
+            with open(audit_results_file, "r", encoding="utf-8") as f:
+                old_results = json.load(f)
+                existing_audits = {r["business_name"]: r for r in old_results if "business_name" in r}
+        except:
+            pass
 
-    print(f"\nðŸ” Auditing {len(leads_with_sites)} websites...\n")
+    to_audit = []
+    already_audited = []
+    for lead in leads_with_sites:
+        name = lead["name"]
+        if name in existing_audits:
+            already_audited.append(existing_audits[name])
+        else:
+            to_audit.append(lead)
+
+    print(f"ℹ️  Websites to audit: {len(to_audit)} | Already audited (skipped): {len(already_audited)}")
     print("=" * 50)
 
-    audit_results = []
+    audit_results = list(already_audited)
 
-    for lead in leads_with_sites:
+    if not to_audit:
+        print("✅ All websites have already been audited. Saving aggregated file.")
+        with open(audit_results_file, "w", encoding="utf-8") as f:
+            json.dump(audit_results, f, indent=2, ensure_ascii=False)
+        return
+
+    for lead in to_audit:
         name = lead["name"]
         url = lead["website"]
 

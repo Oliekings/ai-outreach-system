@@ -1,3 +1,4 @@
+import sys
 import asyncio
 import json
 import os
@@ -7,28 +8,38 @@ from datetime import datetime
 from playwright.async_api import async_playwright
 from dotenv import load_dotenv
 
+if sys.platform == 'win32':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except AttributeError:
+        pass
+
 load_dotenv()
+import pathlib
+# Ensure project root is on sys.path so 'from outreach.x import ...' always works
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 os.makedirs("results/sent/instagram", exist_ok=True)
 os.makedirs("results/logs", exist_ok=True)
 
 
 def load_config() -> dict:
-    with open("ceo_config.json", "r") as f:
+    with open("ceo_config.json", "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def load_ig_log() -> dict:
     path = "results/logs/instagram_log.json"
     if os.path.exists(path):
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     return {"messages": [], "stats": {"sent": 0, "failed": 0}}
 
 
 def save_ig_log(log: dict):
-    with open("results/logs/instagram_log.json", "w") as f:
-        json.dump(log, f, indent=2)
+    with open("results/logs/instagram_log.json", "w", encoding="utf-8") as f:
+        json.dump(log, f, indent=2, ensure_ascii=False)
 
 
 def already_sent_ig(log: dict, profile_url: str, business: str, msg_key: str) -> bool:
@@ -278,13 +289,13 @@ async def send_instagram_dm(
 
 
 def get_next_ig_message(lead_name: str, log: dict) -> tuple:
-    safe_name = re.sub(r'[^a-z0-9]', '-', lead_name.lower()).strip('-')
+    safe_name = lead_name.replace(" ", "_").replace("/", "_").replace("&", "and")
     ig_file = f"results/messages/instagram/{safe_name}_instagram.json"
 
     if not os.path.exists(ig_file):
         return None, None
 
-    with open(ig_file, "r") as f:
+    with open(ig_file, "r", encoding="utf-8") as f:
         messages = json.load(f)
 
     min_days = {"ig_1": 0, "ig_2": 5}
@@ -323,7 +334,7 @@ def get_next_ig_message(lead_name: str, log: dict) -> tuple:
     return "complete", None
 
 
-async def send_all_instagram(dry_run: bool = False, force: bool = False):
+async def send_all_instagram(dry_run: bool = False, force: bool = False, ignore_timing: bool = False):
     config = load_config()
     log = load_ig_log()
     daily_limit = config["outreach"]["daily_instagram_limit"]
@@ -333,7 +344,7 @@ async def send_all_instagram(dry_run: bool = False, force: bool = False):
         print("❌ No enriched leads found")
         return
 
-    with open(enriched_file, "r") as f:
+    with open(enriched_file, "r", encoding="utf-8") as f:
         leads = json.load(f)
 
     leads_with_ig = [
@@ -351,7 +362,7 @@ async def send_all_instagram(dry_run: bool = False, force: bool = False):
     todays_count = get_todays_ig_count(log)
     print(f"Already sent today:    {todays_count}/{daily_limit}\n")
 
-    if todays_count >= daily_limit and not force:
+    if todays_count >= daily_limit and not force and not ignore_timing:
         print("🛑 Daily Instagram limit reached")
         return
 
@@ -366,7 +377,8 @@ async def send_all_instagram(dry_run: bool = False, force: bool = False):
             print(f"[{i}] {name}")
             print(f"     Profile: {msg_data.get('to', '')}")
             print(f"     Key: {msg_key}")
-            print(f"     Message: {msg_data.get('message', '')[:100]}...")
+            from outreach.message_writer import clean_message_content
+            print(f"     Message: {clean_message_content(msg_data.get('message', ''), default_option=3)[:100]}...")
             print()
         return
 
@@ -414,7 +426,8 @@ async def send_all_instagram(dry_run: bool = False, force: bool = False):
                 continue
 
             profile_url = msg_data.get("to", "")
-            message = msg_data.get("message", "")
+            from outreach.message_writer import clean_message_content
+            message = clean_message_content(msg_data.get("message", ""), default_option=3)
 
             send_result = await send_instagram_dm(
                 page=page,
@@ -428,6 +441,7 @@ async def send_all_instagram(dry_run: bool = False, force: bool = False):
                 "profile": profile_url,
                 "msg_key": msg_key,
                 "message_preview": message[:100],
+                "message": message,  # SAVE FULL MESSAGE TEXT
                 "date": datetime.now().isoformat(),
                 "success": send_result["success"],
                 "error": send_result.get("error")
@@ -464,4 +478,5 @@ if __name__ == "__main__":
     import sys
     dry_run = "--dry-run" in sys.argv
     force = "--force" in sys.argv
-    asyncio.run(send_all_instagram(dry_run=dry_run, force=force))
+    ignore_timing = "--ignore-timing" in sys.argv
+    asyncio.run(send_all_instagram(dry_run=dry_run, force=force, ignore_timing=ignore_timing))

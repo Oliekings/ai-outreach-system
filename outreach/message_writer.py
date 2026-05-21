@@ -6,8 +6,45 @@ import random
 import os
 import json
 import re
+import sys
 from dotenv import load_dotenv
 load_dotenv()
+
+class Symbol:
+    """Clean logging symbols that work across all terminals"""
+    USE_EMOJI = False # Set to True if your terminal supports UTF-8 emojis
+    
+    LIST = "📋" if USE_EMOJI else "[LIST]"
+    LEAD = "💎" if USE_EMOJI else "[LEAD]"
+    SEARCH = "🔍" if USE_EMOJI else "[SEARCH]"
+    STOP = "🛑" if USE_EMOJI else "[STOP]"
+    CHECK = "✅" if USE_EMOJI else "[OK]"
+    WORLD = "🌍" if USE_EMOJI else "[WORLD]"
+    WARN = "⚠️" if USE_EMOJI else "[WARN]"
+    AI = "🧠" if USE_EMOJI else "[AI]"
+    VIBE = "🎨" if USE_EMOJI else "[VIBE]"
+    TONE = "🗣️" if USE_EMOJI else "[TONE]"
+    PRIDE = "🆕" if USE_EMOJI else "[PRIDE]"
+    TARGET = "🎯" if USE_EMOJI else "[TARGET]"
+    TIME = "⏰" if USE_EMOJI else "[TIME]"
+    NURTURE = "🌱" if USE_EMOJI else "[NURTURE]"
+    REFERRAL = "🤝" if USE_EMOJI else "[REFERRAL]"
+    EMAIL = "📧" if USE_EMOJI else "[EMAIL]"
+    PHONE = "📞" if USE_EMOJI else "[PHONE]"
+    WHATSAPP = "💬" if USE_EMOJI else "[WHATSAPP]"
+    SOCIAL = "📱" if USE_EMOJI else "[SOCIAL]"
+    INSTAGRAM = "📸" if USE_EMOJI else "[INSTAGRAM]"
+    FACEBOOK = "📘" if USE_EMOJI else "[FACEBOOK]"
+    RETRY = "🔄" if USE_EMOJI else "[RETRY]"
+    BOT = "🛡️" if USE_EMOJI else "[BOT-WALL]"
+    WAIT = "⏳" if USE_EMOJI else "[WAIT]"
+    PITCH = "💡" if USE_EMOJI else "[PITCH]"
+    PAGE = "📄" if USE_EMOJI else "[PAGE]"
+    MAPS = "📍" if USE_EMOJI else "[MAPS]"
+    ERROR = "❌" if USE_EMOJI else "[ERROR]"
+    HUMAN = "🧑" if USE_EMOJI else "[USER]"
+
+sys.stdout.reconfigure(encoding='utf-8')
 
 os.makedirs("results/emails", exist_ok=True)
 os.makedirs("results/messages", exist_ok=True)
@@ -21,53 +58,66 @@ os.makedirs("results/messages/sequences", exist_ok=True)
 # AI CLIENT
 # ─────────────────────────────────────────────────────────────────────────────
 def get_ai_response(prompt: str, max_tokens: int = 1500, retry: int = 3) -> str:
-    for attempt in range(retry):
-        try:
-            claude = Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
-            response = claude.messages.create(
-                model="claude-3-5-sonnet-20241022",
-                max_tokens=max_tokens,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            return response.content[0].text
-        except Exception as e:
-            error = str(e).lower()
-            if "credit" in error or "balance" in error:
-                try:
-                    groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
-                    response = groq.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
-                        max_tokens=max_tokens,
-                        messages=[{"role": "user", "content": prompt}]
-                    )
-                    return response.choices[0].message.content
-                except Exception as groq_error:
-                    groq_err = str(groq_error).lower()
-                    if "rate" in groq_err or "limit" in groq_err:
-                        wait = (attempt + 1) * 15
-                        print(f"      ⏳ Rate limited — waiting {wait}s before retry...")
-                        time.sleep(wait)
-                        continue
-                    raise groq_error
-            elif "rate" in error or "limit" in error:
-                wait = (attempt + 1) * 15
-                print(f"      ⏳ Rate limited — waiting {wait}s before retry...")
-                time.sleep(wait)
-                continue
-            raise e
-    return ""
+    from utils.ai_client import ai_response
+    return ai_response(prompt, task="generate", max_tokens=max_tokens, retry=retry)
+
+from utils.ai_client import safe_json
 
 
-def safe_json(text: str) -> dict:
-    try:
-        clean = re.sub(r'```json|```', '', text).strip()
-        start = clean.find('{')
-        end = clean.rfind('}')
-        if start != -1 and end != -1:
-            return json.loads(clean[start:end+1])
-    except:
-        pass
-    return {}
+def clean_message_content(content: str, default_option: int = 2) -> str:
+    """
+    If the content contains multiple options/variations (formatted with headers),
+    extract a single clean option to avoid sending headers and all options.
+    If the user has edited the message and removed the headers, returns the content as-is.
+    
+    default_option = 1: Professional & Formal (index 0)
+    default_option = 2: Warm & Conversational (index 1)
+    default_option = 3: Short DM (index 2)
+    """
+    if not content:
+        return ""
+        
+    lines = content.splitlines()
+    options = {}  # key: int (1, 2, or 3) -> list of lines
+    current_option = None
+    
+    import re
+    header_pat = re.compile(
+        r'^\s*(?:Option\s*(\d+)\s*[:\-]|Variation\s*(\d+)\s*[:\-]|===\s*VARIATION\s*(\d+)\s*===|Option\s*(\d+)\s*$|Variation\s*(\d+)\s*$)',
+        re.IGNORECASE
+    )
+    
+    has_headers = False
+    for line in lines:
+        match = header_pat.match(line)
+        if match:
+            has_headers = True
+            opt_num = next(int(g) for g in match.groups() if g is not None)
+            current_option = opt_num
+            options[current_option] = []
+        else:
+            if current_option is not None:
+                options[current_option].append(line)
+                
+    if not has_headers:
+        return content
+        
+    # Pick preferred option
+    if default_option == 3:
+        pref_order = [3, 2, 1]
+    elif default_option == 1:
+        pref_order = [1, 2, 3]
+    else:
+        pref_order = [2, 1, 3]
+        
+    for opt in pref_order:
+        if opt in options:
+            opt_content = "\n".join(options[opt]).strip()
+            if opt_content:
+                return opt_content
+                
+    return content
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -201,6 +251,7 @@ def build_lead_context(lead: dict) -> dict:
         "first_name": first_name,
         "email": lead.get("contact_email"),
         "whatsapp": whatsapp_number,
+        "all_phones": lead.get("all_phones", []),
         "instagram_url": instagram_url,
         "instagram_followers": instagram_followers,
         "facebook_url": facebook_url,
@@ -229,7 +280,8 @@ def build_lead_context(lead: dict) -> dict:
         "best_send_time": best_time,
         "rating": lead.get("rating"),
         "reviews": lead.get("reviews"),
-        "city": lead.get("city", "Abuja")
+        "city": lead.get("city", "Abuja"),
+        "sample_site_url": lead.get("site_url")
     }
 
 
@@ -260,37 +312,50 @@ def write_emails(ctx: dict) -> dict:
         issues_text = "• No website found — customers searching online can't find you\n• No online booking system\n• No WhatsApp button for easy contact\n• Missing from key digital directories"
 
     prompt_email1 = f"""
-You are writing the FIRST ever email from a digital consultant to a business owner in {ctx.get('city', 'Abuja')}, Nigeria.
+Write a highly persuasive but natural-sounding outreach email for a {ctx.get('niche', 'business/school/company')} in {ctx.get('city', 'Abuja')}, Nigeria.
 
-Business: {business}
-Owner first name: {ctx['first_name'] or 'there'}
-Business vibe: {vibe}
-Tone: {tone}
-What customers love: {praises}
-What customers complain about: {complaints}
-Key pride of this business: {ctx['key_pride']}
-Has website: {has_website}
-Biggest digital gap: {ctx['biggest_opportunity']}
-Season note: {ctx['season_note'] or 'None'}
+The message should:
+* Start with a genuine compliment based on their brand, mission, website, or online presence: {ctx.get('compliment', 'what you have built')}
+* Sound human, warm, confident, and professional
+* Subtly identify a missed opportunity in their digital presence, marketing, branding, website, or social media: {ctx['biggest_opportunity']}
+* Position my service as a valuable solution without sounding desperate or overly salesy.
+  - My service/business is: A digital consulting and development service that builds premium websites, custom portals, sets up Google Maps SEO and WhatsApp business automation, and deploys custom AI customer service agents to help businesses automate operations, increase visibility, and convert more leads.
+* Create curiosity and emotional buy-in.
+* Make the recipient feel understood, respected, and important.
+* Include psychologically engaging questions that naturally encourage a response.
+* End with a soft but compelling call-to-action that is difficult to ignore.
 
-STRICT RULES:
-- This email has ZERO pitch and ZERO selling
-- It is purely a warm, genuine human observation
-- Reference something REAL and SPECIFIC we found about their business
-- Open with a genuine compliment about something real
-- Mention ONE specific gap we noticed — naturally, not pushy
-- End with ONE soft curious question that invites a reply
-- NO company name, NO services mentioned, NO calls to action
-- Sound like a real person who genuinely noticed something while browsing
-- Max 120 words in the body
-- Use {tone} tone throughout
-- Subject line must feel personal, not marketing
+Tone:
+* Conversational, Intelligent, Premium, Friendly but strategic, Persuasive without pressure.
+* Avoid generic marketing language.
+* Avoid sounding robotic.
+* Default Tone Guideline: {tone} (sprinkle naturally, use {vibe} vibe)
+
+Additional details to mention (integrate naturally where appropriate):
+- Business name: {business}
+- Owner first name: {ctx['first_name'] or 'there'}
+- Key pride of this business: {ctx['key_pride']}
+- Has website: {has_website}
+- Website grade: {ctx['website_grade']}
+- What customers love: {praises}
+- What customers complain about: {complaints}
+- Revenue opportunity: {revenue_hook or 'significant monthly revenue being lost'}
+- Competitor threat: {competitor_threat or 'competitors are pulling ahead digitally'}
+- Season note: {ctx['season_note'] or 'None'}
+- Sample site built for them: {ctx.get('sample_site_url') or 'None'} (If a sample site URL is provided, you MUST include it warmly in the email and invite them to check it out on their own custom page! Let them know we made this custom demo for them.)
+
+Generate 3 variations:
+1. Professional and formal
+2. Warm and conversational
+3. Short high-conversion DM version
 
 Return ONLY valid JSON:
 {{
   "subject": "subject line here",
-  "body": "full email body here",
-  "preview_text": "the preview text shown in inbox before opening"
+  "preview_text": "preview text here",
+  "variation_1": "Professional and formal version here",
+  "variation_2": "Warm and conversational version here",
+  "variation_3": "Short high-conversion DM version here"
 }}
 """
 
@@ -360,20 +425,27 @@ Return ONLY valid JSON:
     emails = {}
 
     for key, prompt in [
-        ("email_1", prompt_email1),
-        ("email_2", prompt_email2),
-        ("email_3", prompt_email3)
+        ("email_1", prompt_email1)
     ]:
         try:
             response = get_ai_response(prompt, max_tokens=800)
             parsed = safe_json(response)
             if parsed:
+                body_content = f"""Option 1: Professional & Formal
+{parsed.get('variation_1', parsed.get('body', '')).strip()}
+
+Option 2: Warm & Conversational
+{parsed.get('variation_2', '').strip()}
+
+Option 3: Short High-Conversion DM
+{parsed.get('variation_3', '').strip()}"""
+
                 emails[key] = {
                     "to": ctx["email"],
                     "subject": parsed.get("subject", ""),
-                    "body": parsed.get("body", ""),
+                    "body": body_content.strip(),
                     "preview_text": parsed.get("preview_text", ""),
-                    "send_day": {"email_1": 3, "email_2": 7, "email_3": 14}[key],
+                    "send_day": 0,
                     "channel": "email"
                 }
             else:
@@ -403,31 +475,43 @@ def write_whatsapp_messages(ctx: dict) -> dict:
     biggest_opportunity = ctx["biggest_opportunity"]
 
     prompt_wa1 = f"""
-Write a first WhatsApp message to a business owner in {ctx.get('city', 'Abuja')}, Nigeria.
+Write a highly persuasive but natural-sounding outreach WhatsApp message for a {ctx.get('niche', 'business/school/company')} in {ctx.get('city', 'Abuja')}, Nigeria.
 
-Business: {business}
-Owner first name: {first_name}
-Vibe: {vibe}
-Use pidgin: {use_pidgin}
-What customers love: {praises}
-Biggest gap: {biggest_opportunity}
-Has website: {has_website}
+The message should:
+* Start with a genuine compliment based on their brand, mission, website, or online presence: {ctx.get('compliment', 'what you have built')}
+* Sound human, warm, confident, and professional
+* Subtly identify a missed opportunity in their digital presence, marketing, branding, website, or social media: {biggest_opportunity}
+* Position my service as a valuable solution without sounding desperate or overly salesy.
+  - My service/business is: A digital consulting and development service that builds premium websites, custom portals, sets up Google Maps SEO and WhatsApp business automation, and deploys custom AI customer service agents to help businesses automate operations, increase visibility, and convert more leads.
+* Create curiosity and emotional buy-in.
+* Make the recipient feel understood, respected, and important.
+* Include psychologically engaging questions that naturally encourage a response.
+* End with a soft but compelling call-to-action that is difficult to ignore.
 
-STRICT RULES:
-- This is WhatsApp — it must feel like a text from a real person
-- Maximum 3 sentences total
-- Ultra conversational, warm, zero formality
-- Open with their name if known
-- Reference ONE real thing about their business
-- End with ONE simple question that invites a reply
-- NO links, NO company name, NO pitch
-- Must NOT feel like marketing or spam
-- If use_pidgin is true, sprinkle natural Nigerian pidgin
-- Emojis: maximum 2, only if they feel natural
+Tone:
+* Conversational, Intelligent, Premium, Friendly but strategic, Persuasive without pressure.
+* Avoid generic marketing language.
+* Avoid sounding robotic.
+* Sprinkle natural Nigerian pidgin if use_pidgin is true (use_pidgin = {use_pidgin}).
+* Emojis: maximum 2, only if they feel natural.
+
+Additional details to mention (integrate naturally where appropriate):
+- Business name: {business}
+- Owner first name: {first_name or 'there'}
+- Has website: {has_website}
+- What customers love: {praises}
+- Sample site built for them: {ctx.get('sample_site_url') or 'None'} (If a sample site URL is provided, you MUST include it warmly in the message and invite them to check it out on their own custom page! Let them know we made this custom demo for them.)
+
+Generate 3 variations:
+1. Professional and formal
+2. Warm and conversational
+3. Short high-conversion DM version
 
 Return ONLY valid JSON:
 {{
-  "message": "the whatsapp message here"
+  "variation_1": "Professional and formal version here",
+  "variation_2": "Warm and conversational version here",
+  "variation_3": "Short high-conversion DM version here"
 }}
 """
 
@@ -483,18 +567,25 @@ Return ONLY valid JSON:
     messages = {}
 
     for key, prompt in [
-        ("wa_1", prompt_wa1),
-        ("wa_2", prompt_wa2),
-        ("wa_3", prompt_wa3)
+        ("wa_1", prompt_wa1)
     ]:
         try:
-            response = get_ai_response(prompt, max_tokens=400)
+            response = get_ai_response(prompt, max_tokens=800)
             parsed = safe_json(response)
             if parsed:
+                msg_content = f"""Option 1: Professional & Formal
+{parsed.get('variation_1', parsed.get('message', '')).strip()}
+
+Option 2: Warm & Conversational
+{parsed.get('variation_2', '').strip()}
+
+Option 3: Short High-Conversion DM
+{parsed.get('variation_3', '').strip()}"""
+
                 messages[key] = {
-                    "to": ctx["whatsapp"],
-                    "message": parsed.get("message", ""),
-                    "send_day": {"wa_1": 1, "wa_2": 4, "wa_3": 8}[key],
+                    "to": ctx["all_phones"],
+                    "message": msg_content.strip(),
+                    "send_day": 1,
                     "channel": "whatsapp"
                 }
             else:
@@ -505,182 +596,7 @@ Return ONLY valid JSON:
     return messages
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# INSTAGRAM DM WRITER
-# writes 2 instagram dms per lead
-# ─────────────────────────────────────────────────────────────────────────────
-def write_instagram_dms(ctx: dict) -> dict:
-    business = ctx["name"]
-    first_name = ctx["first_name"] or ""
-    followers = ctx["instagram_followers"]
-    praises = ctx["praises"]
-    vibe = ctx["vibe"]
-    biggest_opportunity = ctx["biggest_opportunity"]
-    has_website = ctx["has_website"]
 
-    prompt_ig1 = f"""
-Write a first Instagram DM to a business owner in {ctx.get('city', 'Abuja')}, Nigeria.
-
-Business: {business}
-Owner first name: {first_name}
-Instagram followers: {followers or 'unknown'}
-Vibe: {vibe}
-What customers love: {praises}
-Biggest digital gap: {biggest_opportunity}
-Has website: {has_website}
-
-STRICT RULES:
-- Instagram DMs are the most casual of all channels
-- Maximum 3 sentences — Instagram is not email
-- Feel like a genuine follower who noticed something
-- Compliment something SPECIFIC from their presence
-- Ask ONE natural question — don't pitch anything
-- NO links in first DM (Instagram flags them as spam)
-- NO company name, NO services
-- Emojis welcome but max 3 — must feel natural not corporate
-- Must pass the "would a real person send this?" test
-
-Return ONLY valid JSON:
-{{
-  "message": "the instagram dm here"
-}}
-"""
-
-    prompt_ig2 = f"""
-Write a second Instagram DM follow-up to a business owner who didn't reply.
-
-Business: {business}
-Owner first name: {first_name}
-Vibe: {vibe}
-Biggest opportunity: {biggest_opportunity}
-Has website: {has_website}
-
-STRICT RULES:
-- Maximum 4 sentences
-- Reference what you mentioned before briefly
-- Offer something genuinely useful — a free insight or observation
-- This time you can mention what you do — ONE line, softly
-- End with a simple question or soft offer
-- Still casual Instagram tone — not email formal
-
-Return ONLY valid JSON:
-{{
-  "message": "the instagram dm here"
-}}
-"""
-
-    messages = {}
-
-    for key, prompt in [
-        ("ig_1", prompt_ig1),
-        ("ig_2", prompt_ig2),
-    ]:
-        try:
-            response = get_ai_response(prompt, max_tokens=400)
-            parsed = safe_json(response)
-            if parsed:
-                messages[key] = {
-                    "to": ctx["instagram_url"],
-                    "message": parsed.get("message", ""),
-                    "send_day": {"ig_1": 2, "ig_2": 6}[key],
-                    "channel": "instagram"
-                }
-            else:
-                messages[key] = {"error": "Failed to parse AI response"}
-        except Exception as e:
-            messages[key] = {"error": str(e)}
-
-    return messages
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# FACEBOOK MESSAGE WRITER
-# writes 2 facebook messages per lead
-# ─────────────────────────────────────────────────────────────────────────────
-def write_facebook_messages(ctx: dict) -> dict:
-    business = ctx["name"]
-    first_name = ctx["first_name"] or ""
-    vibe = ctx["vibe"]
-    tone = ctx["tone"]
-    praises = ctx["praises"]
-    biggest_opportunity = ctx["biggest_opportunity"]
-    has_website = ctx["has_website"]
-    revenue_hook = ctx["revenue_hook"]
-
-    prompt_fb1 = f"""
-Write a first Facebook page message to a business owner in {ctx.get('city', 'Abuja')}, Nigeria.
-
-Business: {business}
-Owner first name: {first_name}
-Vibe: {vibe}
-Tone: {tone}
-What customers love: {praises}
-Biggest gap: {biggest_opportunity}
-Has website: {has_website}
-
-STRICT RULES:
-- Facebook messages sit between email formality and Instagram casualness
-- Maximum 4 sentences
-- Warm, genuine, researched-feeling
-- Compliment something specific and real
-- Mention ONE gap or opportunity naturally
-- End with a soft question
-- NO pitch, NO company name, NO services mentioned yet
-- Must feel like a warm professional who genuinely noticed something
-
-Return ONLY valid JSON:
-{{
-  "message": "the facebook message here"
-}}
-"""
-
-    prompt_fb2 = f"""
-Write a second Facebook follow-up message to a business owner who didn't reply.
-
-Business: {business}
-Owner first name: {first_name}
-Vibe: {vibe}
-Tone: {tone}
-Revenue opportunity: {revenue_hook or 'real revenue opportunity identified'}
-Biggest opportunity: {biggest_opportunity}
-
-STRICT RULES:
-- Maximum 5 sentences
-- Acknowledge the previous message warmly
-- Lead with ONE specific valuable insight for their business
-- Mention the revenue opportunity naturally — make it feel real
-- Introduce what you do in ONE line — softly, helpfully
-- End with a clear but pressure-free offer
-- Warm professional tone throughout
-
-Return ONLY valid JSON:
-{{
-  "message": "the facebook message here"
-}}
-"""
-
-    messages = {}
-
-    for key, prompt in [
-        ("fb_1", prompt_fb1),
-        ("fb_2", prompt_fb2),
-    ]:
-        try:
-            response = get_ai_response(prompt, max_tokens=400)
-            parsed = safe_json(response)
-            if parsed:
-                messages[key] = {
-                    "to": ctx["facebook_url"],
-                    "message": parsed.get("message", ""),
-                    "send_day": {"fb_1": 5, "fb_2": 10}[key],
-                    "channel": "facebook"
-                }
-            else:
-                messages[key] = {"error": "Failed to parse AI response"}
-        except Exception as e:
-            messages[key] = {"error": str(e)}
-
-    return messages
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -691,9 +607,11 @@ def build_send_sequence(
     ctx: dict,
     emails: dict,
     whatsapp: dict,
-    instagram: dict,
-    facebook: dict
+    instagram: dict = None,
+    facebook: dict = None
 ) -> list:
+    instagram = instagram or {}
+    facebook = facebook or {}
     sequence = []
 
     # Helper to safely extract messages from any channel dict
@@ -764,8 +682,7 @@ def build_send_sequence(
 # ─────────────────────────────────────────────────────────────────────────────
 # SAVE MESSAGES — organized per lead
 # ─────────────────────────────────────────────────────────────────────────────
-def save_messages(lead_name: str, emails: dict, whatsapp: dict,
-                  instagram: dict, facebook: dict, sequence: list):
+def save_messages(lead_name: str, emails: dict, whatsapp: dict, sequence: list):
     safe_name = lead_name.replace(" ", "_").replace("/", "_").replace("&", "and")
 
     # Save emails
@@ -778,16 +695,6 @@ def save_messages(lead_name: str, emails: dict, whatsapp: dict,
     with open(wa_path, "w", encoding="utf-8") as f:
         json.dump(whatsapp, f, indent=2, ensure_ascii=False)
 
-    # Save Instagram
-    ig_path = f"results/messages/instagram/{safe_name}_instagram.json"
-    with open(ig_path, "w", encoding="utf-8") as f:
-        json.dump(instagram, f, indent=2, ensure_ascii=False)
-
-    # Save Facebook
-    fb_path = f"results/messages/facebook/{safe_name}_facebook.json"
-    with open(fb_path, "w", encoding="utf-8") as f:
-        json.dump(facebook, f, indent=2, ensure_ascii=False)
-
     # Save full sequence
     seq_path = f"results/messages/sequences/{safe_name}_sequence.json"
     with open(seq_path, "w", encoding="utf-8") as f:
@@ -796,8 +703,6 @@ def save_messages(lead_name: str, emails: dict, whatsapp: dict,
     return {
         "email": email_path,
         "whatsapp": wa_path,
-        "instagram": ig_path,
-        "facebook": fb_path,
         "sequence": seq_path
     }
 
@@ -814,7 +719,7 @@ def print_preview(lead_name: str, ctx: dict, emails: dict,
     # Email 1
     e1 = emails.get("email_1") or {}
     if e1.get("subject"):
-        print(f"\n  📧 EMAIL 1 (Day {e1.get('send_day', 3)}) → {ctx['email'] or 'No email'}")
+        print(f"\n  {Symbol.EMAIL} EMAIL 1 (Day {e1.get('send_day', 3)}) → {ctx['email'] or 'No email'}")
         print(f"  Subject: {e1['subject']}")
         print(f"  Preview: {e1.get('preview_text', '')}")
         print(f"  ─────────────────────────────────────────────────")
@@ -827,21 +732,21 @@ def print_preview(lead_name: str, ctx: dict, emails: dict,
     # WhatsApp 1
     wa1 = whatsapp.get("wa_1") or {}
     if wa1.get("message"):
-        print(f"\n  💬 WHATSAPP 1 (Day {wa1.get('send_day', 1)}) → {ctx['whatsapp'] or 'No number'}")
+        print(f"\n  {Symbol.WHATSAPP} WHATSAPP 1 (Day {wa1.get('send_day', 1)}) → {ctx['whatsapp'] or 'No number'}")
         print(f"  ─────────────────────────────────────────────────")
         print(f"  {wa1['message']}")
 
     # Instagram 1
     ig1 = instagram.get("ig_1") or {}
     if ig1.get("message"):
-        print(f"\n  📸 INSTAGRAM DM 1 (Day {ig1.get('send_day', 2)}) → {ctx['instagram_url'] or 'No profile'}")
+        print(f"\n  {Symbol.INSTAGRAM} INSTAGRAM DM 1 (Day {ig1.get('send_day', 2)}) → {ctx['instagram_url'] or 'No profile'}")
         print(f"  ─────────────────────────────────────────────────")
         print(f"  {ig1['message']}")
 
     # Facebook 1
     fb1 = facebook.get("fb_1") or {}
     if fb1.get("message"):
-        print(f"\n  📘 FACEBOOK MSG 1 (Day {fb1.get('send_day', 5)}) → {ctx['facebook_url'] or 'No page'}")
+        print(f"\n  {Symbol.FACEBOOK} FACEBOOK MSG 1 (Day {fb1.get('send_day', 5)}) → {ctx['facebook_url'] or 'No page'}")
         print(f"  ─────────────────────────────────────────────────")
         print(f"  {fb1['message']}")
 
@@ -856,16 +761,31 @@ def write_all_messages(
     audit_file: str = "results/audits/general_audit_results.json"
 ):
     # Load enriched leads
-    with open(enriched_file, "r") as f:
+    with open(enriched_file, "r", encoding="utf-8") as f:
         enriched_leads = json.load(f)
 
     # Load audit results and index by name
     audit_map = {}
     if os.path.exists(audit_file):
-        with open(audit_file, "r") as f:
+        with open(audit_file, "r", encoding="utf-8") as f:
             audit_results = json.load(f)
         for result in audit_results:
             audit_map[result["name"]] = result
+
+    # Load existing approved/sent messages to preserve them
+    master_path = "results/messages/sequences/master_sequence.json"
+    approved_messages = {}  # key: (lead_name, channel, day) -> msg_dict
+    if os.path.exists(master_path):
+        try:
+            with open(master_path, "r", encoding="utf-8") as f:
+                old_data = json.load(f)
+            for item in old_data:
+                lead_name = item.get("lead")
+                for msg in item.get("sequence", []):
+                    if msg.get("status") in ["approved", "sent"]:
+                        approved_messages[(lead_name, msg.get("channel"), msg.get("day"))] = msg
+        except Exception as e:
+            print(f"⚠️  Could not load existing master sequence: {e}")
 
     print(f"\n✍️  Message Writer — Writing for {len(enriched_leads)} leads")
     print(f"{'='*65}")
@@ -875,14 +795,12 @@ def write_all_messages(
         "total": len(enriched_leads),
         "emails_written": 0,
         "whatsapp_written": 0,
-        "instagram_written": 0,
-        "facebook_written": 0,
         "no_contacts": 0
     }
 
     for i, lead in enumerate(enriched_leads, 1):
         name = lead["name"]
-        print(f"\n[{i}/{len(enriched_leads)}] ✍️  Writing messages for: {name}")
+        print(f"\n[{i}/{len(enriched_leads)}] ✍️  Writing/Updating messages for: {name}")
 
         # Merge audit data into lead
         if name in audit_map:
@@ -896,63 +814,86 @@ def write_all_messages(
         has_any_contact = any([
             ctx["email"],
             ctx["whatsapp"],
-            ctx["on_instagram"],
-            ctx["on_facebook"]
+            ctx.get("all_phones")
         ])
 
         if not has_any_contact:
-            print(f"   ⚠️  No contact channels found — skipping")
+            print(f"   {Symbol.WARN}  No contact channels found — skipping")
             stats["no_contacts"] += 1
             continue
 
-        print(f"   📧 Email: {ctx['email'] or '—'}")
-        print(f"   💬 WhatsApp: {ctx['whatsapp'] or '—'}")
-        print(f"   📸 Instagram: {'✅' if ctx['on_instagram'] else '—'}")
-        print(f"   📘 Facebook: {'✅' if ctx['on_facebook'] else '—'}")
+        print(f"   {Symbol.EMAIL} Email: {ctx['email'] or '—'}")
+        print(f"   {Symbol.WHATSAPP} WhatsApp: {ctx['whatsapp'] or '—'}")
 
-        # Write all channel messages
-        print(f"   ✍️  Writing emails...")
-        emails = write_emails(ctx) if ctx["email"] else {}
-        if emails: stats["emails_written"] += 1
-        time.sleep(random.uniform(2, 4))
+        # Check for approved/sent messages
+        emails = {}
+        whatsapp = {}
+        
+        approved_email = approved_messages.get((name, "email", 0))
+        approved_wa = approved_messages.get((name, "whatsapp", 1))
+        
+        # Write/preserve emails
+        if approved_email:
+            print(f"   ℹ️  Preserving approved/sent email_1")
+            emails["email_1"] = {
+                "to": approved_email.get("to"),
+                "subject": approved_email.get("subject"),
+                "body": approved_email.get("content"),
+                "preview_text": approved_email.get("preview"),
+                "send_day": 0,
+                "channel": "email"
+            }
+        elif ctx["email"]:
+            print(f"   ✍️  Writing emails...")
+            emails = write_emails(ctx)
+            if emails: stats["emails_written"] += 1
+            time.sleep(random.uniform(2, 4))
 
-        print(f"   ✍️  Writing WhatsApp messages...")
-        whatsapp = write_whatsapp_messages(ctx) if ctx["whatsapp"] else {}
-        if whatsapp: stats["whatsapp_written"] += 1
-        time.sleep(random.uniform(2, 4))
-
-        print(f"   ✍️  Writing Instagram DMs...")
-        instagram = write_instagram_dms(ctx) if ctx["on_instagram"] else {}
-        if instagram: stats["instagram_written"] += 1
-        time.sleep(random.uniform(2, 4))
-
-        print(f"   ✍️  Writing Facebook messages...")
-        facebook = write_facebook_messages(ctx) if ctx["on_facebook"] else {}
-        if facebook: stats["facebook_written"] += 1
-        time.sleep(random.uniform(3, 6))
+        # Write/preserve WhatsApp
+        if approved_wa:
+            print(f"   ℹ️  Preserving approved/sent WhatsApp message")
+            whatsapp["wa_1"] = {
+                "to": approved_wa.get("to"),
+                "message": approved_wa.get("content"),
+                "send_day": 1,
+                "channel": "whatsapp"
+            }
+        elif ctx["whatsapp"] or ctx.get("all_phones"):
+            print(f"   ✍️  Writing WhatsApp messages...")
+            whatsapp = write_whatsapp_messages(ctx)
+            if whatsapp: stats["whatsapp_written"] += 1
+            time.sleep(random.uniform(2, 4))
 
         # Build unified send sequence
-        sequence = build_send_sequence(ctx, emails, whatsapp, instagram, facebook)
+        sequence = build_send_sequence(ctx, emails, whatsapp)
+
+        # Apply approved/sent overrides
+        for item in sequence:
+            key = (name, item["channel"], item["day"])
+            if key in approved_messages:
+                item["status"] = approved_messages[key]["status"]
+                item["content"] = approved_messages[key]["content"]
+                if "subject" in approved_messages[key]:
+                    item["subject"] = approved_messages[key]["subject"]
+                if "preview" in approved_messages[key]:
+                    item["preview"] = approved_messages[key]["preview"]
+                if "to" in approved_messages[key]:
+                    item["to"] = approved_messages[key]["to"]
 
         # Save everything
-        paths = save_messages(name, emails, whatsapp, instagram, facebook, sequence)
-
-        # Print preview of first messages
-        print_preview(name, ctx, emails, whatsapp, instagram, facebook)
+        paths = save_messages(name, emails, whatsapp, sequence)
 
         all_sequences.append({
             "lead": name,
             "channels": {
                 "email": ctx["email"],
-                "whatsapp": ctx["whatsapp"],
-                "instagram": ctx["instagram_url"],
-                "facebook": ctx["facebook_url"]
+                "whatsapp": ctx.get("all_phones") or ctx["whatsapp"]
             },
             "sequence": sequence,
             "files": paths
         })
 
-        print(f"   ✅ Done — {len(sequence)} messages in sequence")
+        print(f"   {Symbol.CHECK} Done — {len(sequence)} messages in sequence")
 
     # Save master sequence file
     master_path = "results/messages/sequences/master_sequence.json"
@@ -966,12 +907,10 @@ def write_all_messages(
     print(f"Total leads:              {stats['total']}")
     print(f"Email sequences written:  {stats['emails_written']}")
     print(f"WhatsApp sequences:       {stats['whatsapp_written']}")
-    print(f"Instagram sequences:      {stats['instagram_written']}")
-    print(f"Facebook sequences:       {stats['facebook_written']}")
     print(f"No contacts found:        {stats['no_contacts']}")
     print(f"\nFiles saved:")
     print(f"  results/emails/          — email sequences per lead")
-    print(f"  results/messages/        — all channel messages")
+    print(f"  results/messages/whatsapp/ — whatsapp sequences per lead")
     print(f"  results/messages/sequences/master_sequence.json")
     print(f"{'='*65}")
 

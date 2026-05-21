@@ -1,7 +1,8 @@
-﻿import json
+import json
 import os
 import re
 import subprocess
+import sys
 from datetime import datetime
 from dotenv import load_dotenv
 from anthropic import Anthropic
@@ -9,61 +10,172 @@ from groq import Groq
 
 load_dotenv()
 
+class Symbol:
+    """Clean logging symbols that work across all terminals"""
+    USE_EMOJI = False # Set to True if your terminal supports UTF-8 emojis
+    
+    LIST = "📋" if USE_EMOJI else "[LIST]"
+    LEAD = "💎" if USE_EMOJI else "[LEAD]"
+    SEARCH = "🔍" if USE_EMOJI else "[SEARCH]"
+    STOP = "🛑" if USE_EMOJI else "[STOP]"
+    CHECK = "✅" if USE_EMOJI else "[OK]"
+    WORLD = "🌍" if USE_EMOJI else "[WORLD]"
+    WARN = "⚠️" if USE_EMOJI else "[WARN]"
+    AI = "🧠" if USE_EMOJI else "[AI]"
+    VIBE = "🎨" if USE_EMOJI else "[VIBE]"
+    TONE = "🗣️" if USE_EMOJI else "[TONE]"
+    PRIDE = "🆕" if USE_EMOJI else "[PRIDE]"
+    TARGET = "🎯" if USE_EMOJI else "[TARGET]"
+    TIME = "⏰" if USE_EMOJI else "[TIME]"
+    NURTURE = "🌱" if USE_EMOJI else "[NURTURE]"
+    REFERRAL = "🤝" if USE_EMOJI else "[REFERRAL]"
+    EMAIL = "📧" if USE_EMOJI else "[EMAIL]"
+    PHONE = "📞" if USE_EMOJI else "[PHONE]"
+    WHATSAPP = "💬" if USE_EMOJI else "[WHATSAPP]"
+    SOCIAL = "📱" if USE_EMOJI else "[SOCIAL]"
+    INSTAGRAM = "📸" if USE_EMOJI else "[INSTAGRAM]"
+    FACEBOOK = "📘" if USE_EMOJI else "[FACEBOOK]"
+    RETRY = "🔄" if USE_EMOJI else "[RETRY]"
+    BOT = "🛡️" if USE_EMOJI else "[BOT-WALL]"
+    WAIT = "⏳" if USE_EMOJI else "[WAIT]"
+    PITCH = "💡" if USE_EMOJI else "[PITCH]"
+    PAGE = "📄" if USE_EMOJI else "[PAGE]"
+    MAPS = "📍" if USE_EMOJI else "[MAPS]"
+    ERROR = "❌" if USE_EMOJI else "[ERROR]"
+    HUMAN = "🧑" if USE_EMOJI else "[USER]"
+
+sys.stdout.reconfigure(encoding='utf-8')
+
 
 def get_ai_response(prompt: str, max_tokens: int = 1500) -> str:
-    try:
-        claude = Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
-        response = claude.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=max_tokens,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return response.content[0].text
-    except Exception as e:
-        if True: # Fallback on any error
-            groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
-            response = groq.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                max_tokens=max_tokens,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            return response.choices[0].message.content
-        raise e
+    from utils.ai_client import ai_response
+    return ai_response(prompt, task="decide", max_tokens=max_tokens)
 
 
-def safe_json(text: str) -> dict:
-    try:
-        clean = re.sub(r'```json|```', '', text).strip()
-        start = clean.find('{')
-        end = clean.rfind('}')
-        if start != -1 and end != -1:
-            return json.loads(clean[start:end+1])
-    except:
-        pass
-    return {}
+from utils.ai_client import safe_json
+
+
+def is_safe_command(command: str) -> bool:
+    """Validate that the command is in the whitelist and has no malicious characters."""
+    if not command:
+        return False
+    
+    # Strip whitespace
+    cmd = command.strip()
+    
+    # Must start with python
+    if not (cmd.startswith("python ") or cmd.startswith("python3 ")):
+        return False
+        
+    # Split into parts
+    parts = cmd.split()
+    if len(parts) < 2:
+        return False
+        
+    script = parts[1]
+    
+    # Whitelist of allowed scripts
+    allowed_scripts = {
+        "intelligence/lead_finder.py",
+        "intelligence/lead_enricher.py",
+        "intelligence/general_auditor.py",
+        "intelligence/email_verifier.py",
+        "intelligence/website_auditor.py",
+        "intelligence/self_optimizer.py",
+        "outreach/message_writer.py",
+        "outreach/email_sender.py",
+        "outreach/whatsapp_sender.py",
+        "outreach/sample_site_builder.py",
+        "response_management/reply_monitor.py",
+        "response_management/reply_handler.py",
+        "scale/campaign_manager.py",
+        "scale/city_manager.py",
+        "scale/niche_manager.py",
+        "scale/performance_tracker.py",
+        "ai_ceo/auditor.py",
+        "ai_ceo/decision_engine.py",
+        "ai_ceo/scheduler.py",
+        "ai_ceo/reviewer.py",
+    }
+    
+    if script not in allowed_scripts:
+        return False
+        
+    # Verify remaining arguments are safe: only alphanumeric, dashes, underscores, spaces, or simple values
+    # Absolutely no shell metacharacters like ;, &, |, $, `, >, <, \, *, ? etc.
+    safe_pattern = re.compile(r'^[\w\s\-\=\.\/]*$')
+    for arg in parts[2:]:
+        if not safe_pattern.match(arg):
+            return False
+            
+    return True
+
 
 
 def load_config() -> dict:
-    with open("ceo_config.json", "r") as f:
+    with open("ceo_config.json", "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────────────────────
 # SYSTEM STATE READER
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────────────────────
 def read_full_system_state() -> dict:
     state = {
         "timestamp": datetime.now().isoformat(),
         "leads": {},
         "outreach": {},
         "replies": {},
-        "performance": {}
+        "performance": {},
+        "campaigns": [],
+        "expansion": [],
+        "knowledge": [],
+        "workflow": {}
     }
+
+    # Workflow state
+    workflow_file = "results/ceo/workflow_state.json"
+    if os.path.exists(workflow_file):
+        try:
+            with open(workflow_file, "r", encoding="utf-8") as f:
+                w_state = json.load(f)
+            
+            # Check if it needs to refresh daily
+            last_updated_str = w_state.get("last_updated")
+            needs_reset = False
+            if last_updated_str:
+                try:
+                    clean_str = last_updated_str.split('+')[0].replace('Z', '')
+                    last_dt = datetime.fromisoformat(clean_str)
+                    if last_dt.date() != datetime.now().date():
+                        needs_reset = True
+                except:
+                    needs_reset = True
+            else:
+                needs_reset = True
+
+            if needs_reset:
+                w_state = {
+                    "current_step": "audit",
+                    "status": "idle",
+                    "last_updated": datetime.now().isoformat()
+                }
+                os.makedirs(os.path.dirname(workflow_file), exist_ok=True)
+                with open(workflow_file, "w", encoding="utf-8") as f:
+                    json.dump(w_state, f, indent=4, ensure_ascii=False)
+            
+            state["workflow"] = w_state
+        except:
+            state["workflow"] = {
+                "current_step": "audit",
+                "status": "idle",
+                "last_updated": datetime.now().isoformat()
+            }
 
     # Leads state
     enriched_file = "results/leads/enriched_leads.json"
     if os.path.exists(enriched_file):
-        with open(enriched_file, "r") as f:
+        with open(enriched_file, "r", encoding="utf-8") as f:
             leads = json.load(f)
 
         state["leads"] = {
@@ -88,7 +200,7 @@ def read_full_system_state() -> dict:
     today = datetime.now().strftime("%Y-%m-%d")
     for channel, path in log_files.items():
         if os.path.exists(path):
-            with open(path, "r") as f:
+            with open(path, "r", encoding="utf-8") as f:
                 log = json.load(f)
 
             entries = log.get(
@@ -107,7 +219,7 @@ def read_full_system_state() -> dict:
     # Reply state
     reply_file = "results/replies/reply_log.json"
     if os.path.exists(reply_file):
-        with open(reply_file, "r") as f:
+        with open(reply_file, "r", encoding="utf-8") as f:
             reply_log = json.load(f)
 
         replies = reply_log.get("replies", [])
@@ -126,16 +238,75 @@ def read_full_system_state() -> dict:
         state["outreach"].get(ch, {}).get("total_sent", 0)
         for ch in ["email", "whatsapp", "instagram", "facebook"]
     )
+    outreach_sent_today = sum(
+        state["outreach"].get(ch, {}).get("sent_today", 0)
+        for ch in ["email", "whatsapp", "instagram", "facebook"]
+    )
     total_replies = state["replies"].get("total", 0)
     total_interested = state["replies"].get("interested", 0)
 
     state["performance"] = {
         "total_messages_sent": total_sent,
+        "sent_today": outreach_sent_today,
         "reply_rate": round(total_replies / max(total_sent, 1) * 100, 1),
         "interest_rate": round(total_interested / max(total_sent, 1) * 100, 1),
         "conversion_rate": round(
             state["leads"].get("interested", 0) / max(state["leads"].get("total", 1), 1) * 100, 1
         )
+    }
+
+    # Scale & Campaign state
+    campaign_file = "results/campaigns/active_campaigns.json"
+    if os.path.exists(campaign_file):
+        try:
+            with open(campaign_file, "r", encoding="utf-8") as f:
+                state["campaigns"] = json.load(f)
+        except: pass
+
+    # Expansion roadmap
+    try:
+        from scale.city_manager import get_expansion_roadmap
+        config_data = load_config()
+        cities = config_data.get("outreach", {}).get("cities", ["Uromi"])
+        current_city = cities[0] if cities else "Uromi"
+        state["expansion"] = get_expansion_roadmap(current_city)
+    except: pass
+
+    # Deep Revenue Metrics (from scale module)
+    try:
+        from scale.performance_tracker import calculate_revenue_metrics, load_all_data
+        data = load_all_data()
+        state["revenue"] = calculate_revenue_metrics(data)
+    except: pass
+
+    # Evolution & Knowledge state
+    lessons_file = "results/knowledge/lessons_learned.json"
+    if os.path.exists(lessons_file):
+        try:
+            with open(lessons_file, "r", encoding="utf-8") as f:
+                state["knowledge"] = json.load(f)
+        except: pass
+
+    # Daily Progress resets daily
+    def is_modified_today(filepath: str) -> bool:
+        if not os.path.exists(filepath):
+            return False
+        try:
+            mtime = os.path.getmtime(filepath)
+            mtime_date = datetime.fromtimestamp(mtime).date()
+            return mtime_date == datetime.today().date()
+        except:
+            return False
+
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    state["daily_progress"] = {
+        "discovered_today": is_modified_today("results/leads/leads.json"),
+        "enriched_today": is_modified_today("results/leads/enriched_leads.json"),
+        "audited_today": is_modified_today("results/audits/audit_results.json"),
+        "crafted_today": is_modified_today("results/messages/sequences/master_sequence.json"),
+        "sent_today": outreach_sent_today > 0,
+        "replies_checked_today": is_modified_today("results/replies/reply_log.json"),
+        "audit_done_today": os.path.exists(f"results/ceo/audit_{today_str}.json")
     }
 
     return state
@@ -144,7 +315,7 @@ def read_full_system_state() -> dict:
 def _avg_enrichment_score(leads: list) -> float:
     scores = []
     for l in leads:
-        score_str = l.get("enrichment_score", "0/8")
+        score_str = l.get("enrichment_score", "0/10")
         try:
             num = int(score_str.split("/")[0])
             scores.append(num)
@@ -153,9 +324,9 @@ def _avg_enrichment_score(leads: list) -> float:
     return round(sum(scores) / max(len(scores), 1), 1)
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────────────────────
 # AI DECISION MAKER
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────────────────────
 def make_autonomous_decisions(state: dict, schedule: dict, config: dict) -> dict:
     """
     The AI CEO reads the full system state and makes autonomous decisions.
@@ -184,23 +355,27 @@ Make decisions for today. Consider:
 3. Do we need more leads? (run lead finder?)
 4. Are there interested leads that urgently need replies?
 5. What is the best use of today's send limits?
-6. Any risks or issues to flag?
+6. SCALING: If performance is stable, should we launch a new campaign in a new city or niche?
+7. EXPANSION: Look at the 'expansion' roadmap in the state. Is it time to move to the next city?
+8. EVOLUTION: Review the 'knowledge' section (Lessons Learned). How should these insights affect today's strategy?
+9. Any risks or issues to flag?
 
 Return ONLY valid JSON:
 {{
   "decisions": [
     {{
-      "action": "run_command or pause_channel or alert_owner or skip",
-      "command": "python command to run if applicable",
+      "action": "run_command or pause_channel or alert_owner or launch_campaign or skip",
+      "command": "python command to run if applicable (e.g. python scale/campaign_manager.py --create ...)",
       "reason": "why this decision was made",
       "priority": 1-10,
       "autonomous": true or false
     }}
   ],
   "alerts": ["any urgent issues to flag to owner"],
-  "performance_insight": "one paragraph insight on current performance",
+  "performance_insight": "one paragraph insight on current performance and scaling potential",
   "recommendation": "single most important thing to focus on today",
-  "pipeline_health": "healthy or at_risk or critical"
+  "pipeline_health": "healthy or at_risk or critical",
+  "growth_strategy": "stay_put or test_niche or expand_city"
 }}
 """
 
@@ -210,25 +385,64 @@ Return ONLY valid JSON:
         if result:
             return result
     except Exception as e:
-        print(f"   âš ï¸  Decision engine failed: {e}")
+        print(f"   {Symbol.WARN}  Decision engine failed: {e}")
 
     # Fallback decisions
     decisions = []
+
+    # Check Workflow state for 12-hour timeout
+    workflow = state.get("workflow", {})
+    current_step = workflow.get("current_step", "audit")
+    last_updated_str = workflow.get("last_updated")
+    
+    if last_updated_str:
+        try:
+            last_updated = datetime.fromisoformat(last_updated_str)
+            hours_passed = (datetime.now() - last_updated).total_seconds() / 3600
+            
+            if hours_passed >= 12:
+                # Need to advance workflow
+                if current_step == "audit":
+                    decisions.append({
+                        "action": "run_command",
+                        "command": "python intelligence/general_auditor.py",
+                        "reason": f"Workflow timeout ({hours_passed:.1f}h): Running Auditor",
+                        "priority": 1,
+                        "autonomous": True
+                    })
+                elif current_step == "craft":
+                    decisions.append({
+                        "action": "run_command",
+                        "command": "python outreach/message_writer.py",
+                        "reason": f"Workflow timeout ({hours_passed:.1f}h): Crafting Messages",
+                        "priority": 1,
+                        "autonomous": True
+                    })
+                elif current_step == "outreach":
+                    decisions.append({
+                        "action": "run_command",
+                        "command": "python outreach/email_sender.py",
+                        "reason": f"Workflow timeout ({hours_passed:.1f}h): Running Outreach",
+                        "priority": 1,
+                        "autonomous": True
+                    })
+        except:
+            pass
 
     # Always check replies first
     if state["replies"].get("interested", 0) > 0:
         decisions.append({
             "action": "run_command",
-            "command": "python reply_monitor.py --send",
+            "command": "python response_management/reply_monitor.py --send",
             "reason": "Interested leads waiting for reply",
-            "priority": 1,
+            "priority": 2,
             "autonomous": True
         })
 
     # Check inbox
     decisions.append({
         "action": "run_command",
-        "command": "python reply_monitor.py",
+        "command": "python response_management/reply_monitor.py",
         "reason": "Daily inbox check",
         "priority": 2,
         "autonomous": True
@@ -240,7 +454,7 @@ Return ONLY valid JSON:
     if wa_today < wa_limit:
         decisions.append({
             "action": "run_command",
-            "command": "python whatsapp_sender.py",
+            "command": "python outreach/whatsapp_sender.py",
             "reason": f"WhatsApp slots available: {wa_limit - wa_today}",
             "priority": 3,
             "autonomous": True
@@ -292,8 +506,18 @@ def execute_decisions(decisions_result: dict, dry_run: bool = False) -> list:
             continue
 
         if action == "run_command" and command and autonomous:
+            if not is_safe_command(command):
+                print(f"      🛑 SECURITY ALERT: Command blocked by whitelist: '{command}'")
+                executed.append({
+                    "decision": decision,
+                    "executed": False,
+                    "success": False,
+                    "result": "blocked_by_security_whitelist"
+                })
+                continue
+
             if dry_run:
-                print(f"      ðŸ” DRY RUN â€” would run: {command}")
+                print(f"      {Symbol.SEARCH}  DRY RUN — would run: {command}")
                 executed.append({
                     "decision": decision,
                     "executed": False,
@@ -306,6 +530,7 @@ def execute_decisions(decisions_result: dict, dry_run: bool = False) -> list:
                         command.split(),
                         capture_output=True,
                         text=True,
+                        encoding='utf-8',
                         timeout=300
                     )
                     success = result.returncode == 0
@@ -317,7 +542,7 @@ def execute_decisions(decisions_result: dict, dry_run: bool = False) -> list:
                         "result": "completed" if success else "failed"
                     })
                     if success:
-                        print(f"      âœ… Completed")
+                        print(f"      {Symbol.CHECK} Completed")
                     else:
                         print(f"      âŒ Failed: {result.stderr[:100]}")
                 except subprocess.TimeoutExpired:

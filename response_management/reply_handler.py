@@ -1,50 +1,35 @@
-﻿import json
+import json
 import os
 import re
 from datetime import datetime
 from dotenv import load_dotenv
-from anthropic import Anthropic
-from groq import Groq
+import sys
+import pathlib
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+from utils.ai_client import ai_response as get_ai_response
 
 load_dotenv()
 
+sys.stdout.reconfigure(encoding='utf-8')
 
-def get_ai_response(prompt: str, max_tokens: int = 1000) -> str:
-    try:
-        claude = Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
-        response = claude.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=max_tokens,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return response.content[0].text
-    except Exception as e:
-        if True: # Fallback on any error
-            groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
-            response = groq.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                max_tokens=max_tokens,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            return response.choices[0].message.content
-        raise e
 
 
 def load_config() -> dict:
-    with open("ceo_config.json", "r") as f:
+    with open("ceo_config.json", "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def load_reply_log() -> dict:
     path = "results/replies/reply_log.json"
     if os.path.exists(path):
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     return {"replies": [], "stats": {}}
 
 
 def save_reply_log(log: dict):
-    with open("results/replies/reply_log.json", "w") as f:
+    with open("results/replies/reply_log.json", "w", encoding="utf-8") as f:
         json.dump(log, f, indent=2, ensure_ascii=False)
 
 
@@ -110,7 +95,7 @@ def get_nurture_queue() -> list:
     if not os.path.exists(enriched_file):
         return []
 
-    with open(enriched_file, "r") as f:
+    with open(enriched_file, "r", encoding="utf-8") as f:
         leads = json.load(f)
 
     nurture_leads = []
@@ -173,7 +158,7 @@ def send_nurture_messages(dry_run: bool = False):
     smtp_pass = os.getenv("BREVO_SMTP_PASS")
 
     enriched_file = "results/leads/enriched_leads.json"
-    with open(enriched_file, "r") as f:
+    with open(enriched_file, "r", encoding="utf-8") as f:
         all_leads = json.load(f)
 
     for item in nurture_queue:
@@ -228,7 +213,7 @@ def send_nurture_messages(dry_run: bool = False):
                     all_leads[i]["sent_nurtures"].append(tp_key)
                     break
 
-    with open(enriched_file, "w") as f:
+    with open(enriched_file, "w", encoding="utf-8") as f:
         json.dump(all_leads, f, indent=2, ensure_ascii=False)
 
 

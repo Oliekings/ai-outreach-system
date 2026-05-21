@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import sys
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from anthropic import Anthropic
@@ -8,43 +9,53 @@ from groq import Groq
 
 load_dotenv()
 
+class Symbol:
+    """Clean logging symbols that work across all terminals"""
+    USE_EMOJI = False # Set to True if your terminal supports UTF-8 emojis
+    
+    LIST = "📋" if USE_EMOJI else "[LIST]"
+    LEAD = "💎" if USE_EMOJI else "[LEAD]"
+    SEARCH = "🔍" if USE_EMOJI else "[SEARCH]"
+    STOP = "🛑" if USE_EMOJI else "[STOP]"
+    CHECK = "✅" if USE_EMOJI else "[OK]"
+    WORLD = "🌍" if USE_EMOJI else "[WORLD]"
+    WARN = "⚠️" if USE_EMOJI else "[WARN]"
+    AI = "🧠" if USE_EMOJI else "[AI]"
+    VIBE = "🎨" if USE_EMOJI else "[VIBE]"
+    TONE = "🗣️" if USE_EMOJI else "[TONE]"
+    PRIDE = "🆕" if USE_EMOJI else "[PRIDE]"
+    TARGET = "🎯" if USE_EMOJI else "[TARGET]"
+    TIME = "⏰" if USE_EMOJI else "[TIME]"
+    NURTURE = "🌱" if USE_EMOJI else "[NURTURE]"
+    REFERRAL = "🤝" if USE_EMOJI else "[REFERRAL]"
+    EMAIL = "📧" if USE_EMOJI else "[EMAIL]"
+    PHONE = "📞" if USE_EMOJI else "[PHONE]"
+    WHATSAPP = "💬" if USE_EMOJI else "[WHATSAPP]"
+    SOCIAL = "📱" if USE_EMOJI else "[SOCIAL]"
+    INSTAGRAM = "📸" if USE_EMOJI else "[INSTAGRAM]"
+    FACEBOOK = "📘" if USE_EMOJI else "[FACEBOOK]"
+    RETRY = "🔄" if USE_EMOJI else "[RETRY]"
+    BOT = "🛡️" if USE_EMOJI else "[BOT-WALL]"
+    WAIT = "⏳" if USE_EMOJI else "[WAIT]"
+    PITCH = "💡" if USE_EMOJI else "[PITCH]"
+    PAGE = "📄" if USE_EMOJI else "[PAGE]"
+    MAPS = "📍" if USE_EMOJI else "[MAPS]"
+    ERROR = "❌" if USE_EMOJI else "[ERROR]"
+    HUMAN = "🧑" if USE_EMOJI else "[USER]"
+
+sys.stdout.reconfigure(encoding='utf-8')
+
 
 def get_ai_response(prompt: str, max_tokens: int = 2000) -> str:
-    try:
-        claude = Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
-        response = claude.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=max_tokens,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return response.content[0].text
-    except Exception as e:
-        if True: # Fallback on any error
-            groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
-            response = groq.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                max_tokens=max_tokens,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            return response.choices[0].message.content
-        raise e
+    from utils.ai_client import ai_response
+    return ai_response(prompt, task="audit", max_tokens=max_tokens)
+
+from utils.ai_client import safe_json
 
 
-def safe_json(text: str) -> dict:
-    try:
-        clean = re.sub(r'```json|```', '', text).strip()
-        start = clean.find('{')
-        end = clean.rfind('}')
-        if start != -1 and end != -1:
-            return json.loads(clean[start:end+1])
-    except:
-        pass
-    return {}
-
-
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────────────────────
 # PERFORMANCE AUDITOR
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────────────────────
 def run_daily_audit(state: dict) -> dict:
     """
     The AI CEO runs a full daily audit of the entire system.
@@ -112,13 +123,13 @@ Return ONLY valid JSON:
         if result:
             return result
     except Exception as e:
-        print(f"   âš ï¸  Audit AI failed: {e}")
+        print(f"   {Symbol.ERROR} Audit AI failed: {e}")
 
     return {
         "overall_health": "unknown",
         "health_score": 50,
         "kpis": {},
-        "critical_issues": ["Audit system unavailable â€” check manually"],
+        "critical_issues": ["Audit system unavailable — check manually"],
         "opportunities": [],
         "today_priorities": ["Run reply_monitor.py", "Check leads pipeline", "Review messages"],
         "ceo_message": "System audit unavailable. Run manually.",
@@ -134,34 +145,34 @@ def generate_audit_report(audit_result: dict, state: dict) -> str:
     kpis = audit_result.get("kpis", {})
 
     health_icon = {
-        "excellent": "ðŸŸ¢", "good": "ðŸŸ¢",
-        "fair": "ðŸŸ¡", "poor": "ðŸŸ ", "critical": "ðŸ”´"
-    }.get(health, "âšª")
+        "excellent": Symbol.CHECK, "good": Symbol.CHECK,
+        "fair": Symbol.WARN, "poor": Symbol.WARN, "critical": Symbol.STOP
+    }.get(health, "[?]")
 
-    line = "â”" * 56
+    line = "-" * 56
 
     report = f"""
-â•”{'â•'*56}â•—
-â•‘  ðŸ¤– AI CEO DAILY AUDIT REPORT                        â•‘
-â•‘  {now.strftime('%A, %d %B %Y â€” %I:%M %p'):<52}  â•‘
-â•š{'â•'*56}â•
++{"="*56}+
+|  {Symbol.AI} AI CEO DAILY AUDIT REPORT                        |
+|  {now.strftime('%A, %d %B %Y — %I:%M %p'):<52}  |
++{"="*56}+
 
 {line}
   OVERALL HEALTH: {health_icon} {health.upper()} ({score}/100)
 {line}
 
-  ðŸ“Š KEY METRICS
+  {Symbol.LIST} KEY METRICS
   {line}
   Leads in pipeline:       {kpis.get('leads_in_pipeline', state['leads'].get('total', 0))}
   Contactable leads:       {state['leads'].get('with_email', 0)} email / {state['leads'].get('with_whatsapp', 0)} WhatsApp
-  Interested leads:        {state['leads'].get('interested', 0)} ðŸ”¥
+  Interested leads:        {state['leads'].get('interested', 0)} {Symbol.PRIDE}
   Total messages sent:     {state['performance'].get('total_messages_sent', 0)}
   Reply rate:              {state['performance'].get('reply_rate', 0)}%
   Interest rate:           {state['performance'].get('interest_rate', 0)}%
-  Est. pipeline value:     â‚¦{kpis.get('estimated_pipeline_value_ngn', 0):,}
+  Est. pipeline value:     ₦{kpis.get('estimated_pipeline_value_ngn', 0):,}
   Est. days to 1st client: {kpis.get('days_to_first_client_estimate', 'Unknown')}
 
-  ðŸ“º CHANNEL PERFORMANCE
+  {Symbol.SOCIAL} CHANNEL PERFORMANCE
   {line}
   Email:     {state['outreach'].get('email', {}).get('total_sent', 0)} sent total
   WhatsApp:  {state['outreach'].get('whatsapp', {}).get('total_sent', 0)} sent total
@@ -171,28 +182,28 @@ def generate_audit_report(audit_result: dict, state: dict) -> str:
 """
 
     if audit_result.get("critical_issues"):
-        report += f"\n  ðŸ”´ CRITICAL ISSUES\n  {line}\n"
+        report += f"\n  {Symbol.STOP} CRITICAL ISSUES\n  {line}\n"
         for issue in audit_result["critical_issues"]:
-            report += f"  âœ— {issue}\n"
+            report += f"  [X] {issue}\n"
 
     if audit_result.get("opportunities"):
-        report += f"\n  âœ… OPPORTUNITIES\n  {line}\n"
+        report += f"\n  {Symbol.CHECK} OPPORTUNITIES\n  {line}\n"
         for opp in audit_result["opportunities"]:
-            report += f"  â†’ {opp}\n"
+            report += f"  → {opp}\n"
 
     if audit_result.get("today_priorities"):
-        report += f"\n  ðŸŽ¯ TODAY'S PRIORITIES\n  {line}\n"
+        report += f"\n  {Symbol.TARGET} TODAY'S PRIORITIES\n  {line}\n"
         for i, priority in enumerate(audit_result["today_priorities"], 1):
             report += f"  {i}. {priority}\n"
 
     if audit_result.get("weekly_targets"):
-        report += f"\n  ðŸ“… THIS WEEK'S TARGETS\n  {line}\n"
+        report += f"\n  {Symbol.TIME} THIS WEEK'S TARGETS\n  {line}\n"
         for target in audit_result["weekly_targets"]:
-            report += f"  â€¢ {target}\n"
+            report += f"  • {target}\n"
 
     ceo_msg = audit_result.get("ceo_message", "")
     if ceo_msg:
-        report += f"\n  ðŸ’¼ CEO MESSAGE\n  {line}\n"
+        report += f"\n  [CEO] CEO MESSAGE\n  {line}\n"
         # Word wrap at 54 chars
         words = ceo_msg.split()
         line_text = "  "
@@ -206,7 +217,7 @@ def generate_audit_report(audit_result: dict, state: dict) -> str:
 
     hire_signal = audit_result.get("hire_signal", "no")
     if hire_signal and "yes" in hire_signal.lower():
-        report += f"\n  ðŸ‘¥ HIRING SIGNAL: {hire_signal}\n"
+        report += f"\n  {Symbol.HUMAN} HIRING SIGNAL: {hire_signal}\n"
 
     report += f"\n{'â•'*58}\n"
     return report
@@ -218,8 +229,8 @@ def save_audit(audit_result: dict, report_text: str):
     today = datetime.now().strftime("%Y-%m-%d")
 
     # Save JSON
-    with open(f"results/ceo/audit_{today}.json", "w") as f:
-        json.dump(audit_result, f, indent=2)
+    with open(f"results/ceo/audit_{today}.json", "w", encoding="utf-8") as f:
+        json.dump(audit_result, f, indent=2, ensure_ascii=False)
 
     # Save text report
     with open(f"results/ceo/audit_{today}.txt", "w", encoding="utf-8") as f:

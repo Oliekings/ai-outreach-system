@@ -3,6 +3,7 @@ node_modules/
 __pycache__/
 .venv/
 venv/
+venv312/
 *.pyc
 *.pyo
 *.pyd
@@ -50,3 +51,19 @@ Thumbs.db
 
 # Sessions
 .ig_session/
+.fb_session/
+.wa_session/
+
+# Temporary step/extracted/recovery files
+step_*
+view_step_*
+extracted_step_*
+raw_step_*
+content_format_wa_*
+format_wa_*
+find_lead_*
+recovered_reply_monitor_*
+apply_changes_*
+audit_debug.txt
+scratch/
+scratch_search.py

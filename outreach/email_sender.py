@@ -14,6 +14,11 @@ from email import encoders
 import requests
 
 load_dotenv()
+import sys
+import pathlib
+# Ensure project root is on sys.path so 'from outreach.x import ...' always works
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+sys.stdout.reconfigure(encoding='utf-8')
 
 os.makedirs("results/sent", exist_ok=True)
 os.makedirs("results/sent/emails", exist_ok=True)
@@ -24,7 +29,7 @@ os.makedirs("results/logs", exist_ok=True)
 # CONFIG LOADER
 # ─────────────────────────────────────────────────────────────────────────────
 def load_config() -> dict:
-    with open("ceo_config.json", "r") as f:
+    with open("ceo_config.json", "r", encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -34,14 +39,14 @@ def load_config() -> dict:
 def load_send_log() -> dict:
     log_path = "results/logs/send_log.json"
     if os.path.exists(log_path):
-        with open(log_path, "r") as f:
+        with open(log_path, "r", encoding="utf-8") as f:
             return json.load(f)
     return {"emails": [], "stats": {"sent": 0, "failed": 0, "skipped": 0}}
 
 
 def save_send_log(log: dict):
-    with open("results/logs/send_log.json", "w") as f:
-        json.dump(log, f, indent=2)
+    with open("results/logs/send_log.json", "w", encoding="utf-8") as f:
+        json.dump(log, f, indent=2, ensure_ascii=False)
 
 
 def already_sent(log: dict, email: str, business_name: str, email_key: str) -> bool:
@@ -287,7 +292,8 @@ def get_todays_send_count(log: dict) -> int:
 def send_email_sequence(
     lead_name: str,
     force: bool = False,
-    dry_run: bool = False
+    dry_run: bool = False,
+    ignore_timing: bool = False
 ) -> dict:
     """
     Send the appropriate email in the sequence for a specific lead.
@@ -309,14 +315,14 @@ def send_email_sequence(
     }
 
     # Check timing
-    if not force:
+    if not force and not ignore_timing:
         good_time, reason = is_good_send_time(config)
         if not good_time:
             result["reason"] = reason
             result["action"] = "skipped_timing"
             return result
 
-    # Check daily limit
+    # Check daily limit — always enforced regardless of --ignore-timing
     todays_count = get_todays_send_count(log)
     if todays_count >= daily_limit and not force:
         result["reason"] = f"Daily limit reached ({todays_count}/{daily_limit})"
@@ -324,7 +330,7 @@ def send_email_sequence(
         return result
 
     # Load the email sequence for this lead
-    safe_name = re.sub(r'[^a-z0-9]', '-', lead_name.lower()).strip('-')
+    safe_name = lead_name.replace(" ", "_").replace("/", "_").replace("&", "and")
     email_file = f"results/emails/{safe_name}_emails.json"
 
     if not os.path.exists(email_file):
@@ -332,35 +338,75 @@ def send_email_sequence(
         result["action"] = "skipped_no_file"
         return result
 
-    with open(email_file, "r") as f:
+    with open(email_file, "r", encoding="utf-8") as f:
         emails = json.load(f)
 
     # Load enriched lead data
     enriched_file = "results/leads/enriched_leads.json"
     lead_data = {}
     if os.path.exists(enriched_file):
-        with open(enriched_file, "r") as f:
+        with open(enriched_file, "r", encoding="utf-8") as f:
             all_leads = json.load(f)
         for l in all_leads:
             if l["name"] == lead_name:
                 lead_data = l
                 break
 
-    to_email = lead_data.get("contact_email")
-    if not to_email:
-        result["reason"] = "No email address for this lead"
+    # Gather all emails associated with this organization
+    emails_to_try = []
+    contact_email = lead_data.get("contact_email")
+    if contact_email:
+        emails_to_try.append(contact_email)
+    
+    all_emails = lead_data.get("all_emails", [])
+    if isinstance(all_emails, list):
+        for e in all_emails:
+            if e and isinstance(e, str):
+                emails_to_try.append(e)
+    elif isinstance(all_emails, str) and all_emails:
+        emails_to_try.append(all_emails)
+
+    # Deduplicate while preserving order
+    emails_to_try = list(dict.fromkeys(emails_to_try))
+
+    if not emails_to_try:
+        result["reason"] = "No email addresses found for this lead"
         result["action"] = "skipped_no_email"
         return result
+
+    # Load sequence for human review check
+    seq_path = f"results/messages/sequences/{safe_name}_sequence.json"
+    sequence = []
+    if os.path.exists(seq_path):
+        with open(seq_path, "r", encoding="utf-8") as f:
+            sequence = json.load(f)
+    email_seq_items = [m for m in sequence if m.get("channel") == "email"]
+    require_human = config.get("quality", {}).get("require_human_review", True)
 
     # Determine which email to send next
     email_order = ["email_1", "email_2", "email_3"]
     email_to_send = None
     email_key = None
+    unsent_emails = []
 
     for key in email_order:
         if key not in emails:
             continue
-        if not already_sent(log, to_email, lead_name, key):
+        
+        # Check which of the emails have not been sent yet for this key
+        key_unsent = [e for e in emails_to_try if not already_sent(log, e, lead_name, key)]
+        
+        if key_unsent:
+            # Check human approval if required
+            if require_human and not force:
+                email_idx = int(key.split("_")[1]) - 1
+                if email_idx < len(email_seq_items):
+                    status = email_seq_items[email_idx].get("status", "queued")
+                    if status != "approved":
+                        result["reason"] = f"Awaiting human approval (status is '{status}')"
+                        result["action"] = "skipped_awaiting_approval"
+                        return result
+
             # Check if enough days have passed since last email
             last_sent = None
             for entry in reversed(log["emails"]):
@@ -379,15 +425,19 @@ def send_email_sequence(
 
             email_to_send = emails[key]
             email_key = key
+            unsent_emails = key_unsent
             break
 
     if not email_to_send:
-        result["reason"] = "All emails in sequence already sent"
+        result["reason"] = "All emails in sequence already sent to all addresses"
         result["action"] = "sequence_complete"
         return result
 
     subject = email_to_send.get("subject", "")
     body_text = email_to_send.get("body", "")
+
+    from outreach.message_writer import clean_message_content
+    body_text = clean_message_content(body_text, default_option=2)
 
     if not subject or not body_text:
         result["reason"] = "Email content is empty"
@@ -397,7 +447,8 @@ def send_email_sequence(
     # Check if there's a sample site to include
     site_link = None
     if email_key in ["email_2", "email_3"]:
-        site_path = f"results/sites/{safe_name}.html"
+        site_safe_name = re.sub(r'[^a-z0-9]', '-', lead_name.lower()).strip('-')
+        site_path = f"results/sites/{site_safe_name}.html"
         if os.path.exists(site_path):
             site_link = f"[SAMPLE SITE: {site_path}]"
 
@@ -410,78 +461,146 @@ def send_email_sequence(
         site_link=site_link
     )
 
-    # Dry run — just preview
-    if dry_run:
-        print(f"\n   📧 DRY RUN — Would send {email_key} to {to_email}")
-        print(f"   Subject: {subject}")
-        print(f"   Body preview: {body_text[:150]}...")
-        result["action"] = "dry_run"
-        result["success"] = True
-        return result
+    any_success = False
+    last_error = None
+    sends_attempted = 0
 
-    # Human-like random delay before sending
-    delay = random.uniform(30, 120)
-    print(f"   ⏳ Waiting {delay:.0f}s before sending (human-like)...")
-    time.sleep(delay)
+    for idx, to_email in enumerate(unsent_emails):
+        # Check daily limit BEFORE each email send in case we hit it mid-loop
+        todays_count = get_todays_send_count(log)
+        if todays_count >= daily_limit and not force:
+            print(f"   🛑 Daily limit reached mid-loop ({todays_count}/{daily_limit})")
+            if not last_error:
+                last_error = f"Daily limit reached ({todays_count}/{daily_limit})"
+            break
 
-    # Try SMTP first, fall back to API
-    print(f"   📧 Sending {email_key} to {to_email}...")
-    send_result = send_via_brevo_smtp(
-        to_email=to_email,
-        subject=subject,
-        body_text=body_text,
-        body_html=body_html,
-        from_name=from_name,
-        from_email=from_email,
-        reply_to=reply_to
-    )
+        # Dry run — just preview
+        if dry_run:
+            print(f"\n   📧 DRY RUN — Would send {email_key} to {to_email}")
+            print(f"   Subject: {subject}")
+            print(f"   Body preview: {body_text[:150]}...")
+            any_success = True
+            sends_attempted += 1
+            continue
 
-    if not send_result["success"]:
-        print(f"   ⚠️  SMTP failed: {send_result['error']} — trying API...")
-        send_result = send_via_brevo_api(
+        # Human-like random delay before sending
+        if idx > 0 or sends_attempted > 0:
+            delay = random.uniform(20, 60)
+            print(f"   ⏳ Waiting {delay:.0f}s before sending to next address {to_email} (human-like)...")
+            time.sleep(delay)
+        else:
+            delay = random.uniform(30, 120)
+            print(f"   ⏳ Waiting {delay:.0f}s before sending to {to_email} (human-like)...")
+            time.sleep(delay)
+
+        print(f"   📧 Sending {email_key} to {to_email}...")
+        send_result = send_via_brevo_smtp(
             to_email=to_email,
-            to_name=lead_name,
             subject=subject,
+            body_text=body_text,
             body_html=body_html,
             from_name=from_name,
-            from_email=from_email
+            from_email=from_email,
+            reply_to=reply_to
         )
 
-    # Log the send
-    log_entry = {
-        "business": lead_name,
-        "to": to_email,
-        "email_key": email_key,
-        "subject": subject,
-        "date": datetime.now().isoformat(),
-        "success": send_result["success"],
-        "method": send_result["method"],
-        "error": send_result.get("error")
-    }
-    log["emails"].append(log_entry)
+        if not send_result["success"]:
+            print(f"   ⚠️  SMTP failed: {send_result['error']} — trying API...")
+            send_result = send_via_brevo_api(
+                to_email=to_email,
+                to_name=lead_name,
+                subject=subject,
+                body_html=body_html,
+                from_name=from_name,
+                from_email=from_email
+            )
 
-    if send_result["success"]:
-        log["stats"]["sent"] = log["stats"].get("sent", 0) + 1
-        print(f"   ✅ Sent successfully via {send_result['method']}")
-    else:
-        log["stats"]["failed"] = log["stats"].get("failed", 0) + 1
-        print(f"   ❌ Failed: {send_result.get('error')}")
+        # Log the send
+        log_entry = {
+            "business": lead_name,
+            "to": to_email,
+            "email_key": email_key,
+            "subject": subject,
+            "message": body_text,  # SAVE FULL MESSAGE TEXT
+            "date": datetime.now().isoformat(),
+            "success": send_result["success"],
+            "method": send_result["method"],
+            "error": send_result.get("error")
+        }
+        log["emails"].append(log_entry)
+        sends_attempted += 1
 
-    save_send_log(log)
+        if send_result["success"]:
+            log["stats"]["sent"] = log["stats"].get("sent", 0) + 1
+            print(f"   ✅ Sent successfully to {to_email} via {send_result['method']}")
+            any_success = True
+        else:
+            log["stats"]["failed"] = log["stats"].get("failed", 0) + 1
+            print(f"   ❌ Failed to send to {to_email}: {send_result.get('error')}")
+            last_error = send_result.get("error")
+
+        # Save send log after each send
+        save_send_log(log)
+
+    if sends_attempted == 0:
+        result["action"] = "skipped_limit"
+        result["success"] = False
+        result["reason"] = f"Daily limit reached ({get_todays_send_count(log)}/{daily_limit})"
+        return result
+
+    if any_success:
+        # Update sequence status to 'sent' in sequence files if successful
+        try:
+            # 1. Update individual sequence file
+            if os.path.exists(seq_path):
+                with open(seq_path, "r", encoding="utf-8") as f:
+                    seq_data = json.load(f)
+                email_idx = int(email_key.split("_")[1]) - 1
+                curr_idx = 0
+                for msg in seq_data:
+                    if msg.get("channel") == "email":
+                        if curr_idx == email_idx:
+                            msg["status"] = "sent"
+                            break
+                        curr_idx += 1
+                with open(seq_path, "w", encoding="utf-8") as f:
+                    json.dump(seq_data, f, indent=2, ensure_ascii=False)
+            
+            # 2. Update master sequence file
+            master_seq_path = "results/messages/sequences/master_sequence.json"
+            if os.path.exists(master_seq_path):
+                with open(master_seq_path, "r", encoding="utf-8") as f:
+                    master_seq = json.load(f)
+                for lead_seq in master_seq:
+                    if lead_seq.get("lead") == lead_name:
+                        email_idx = int(email_key.split("_")[1]) - 1
+                        curr_idx = 0
+                        for msg in lead_seq.get("sequence", []):
+                            if msg.get("channel") == "email":
+                                if curr_idx == email_idx:
+                                    msg["status"] = "sent"
+                                    break
+                                curr_idx += 1
+                with open(master_seq_path, "w", encoding="utf-8") as f:
+                    json.dump(master_seq, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"   ⚠️  Failed to update sequence status: {e}")
 
     result["action"] = f"sent_{email_key}"
-    result["success"] = send_result["success"]
-    result["reason"] = send_result.get("error")
+    result["success"] = any_success
+    result["reason"] = None if any_success else last_error
     return result
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# BATCH SENDER — send to all leads
+# BATCH SENDER — session-based: 2 per session, 30-60 min between sessions
 # ─────────────────────────────────────────────────────────────────────────────
-def send_all_emails(dry_run: bool = False, force: bool = False):
+def send_all_emails(dry_run: bool = False, force: bool = False, ignore_timing: bool = False):
     config = load_config()
-    log = load_send_log()
     daily_limit = config["outreach"]["daily_email_limit"]
+    session_size = 2          # emails per session
+    session_wait_min = 30 * 60   # 30 minutes in seconds
+    session_wait_max = 60 * 60   # 60 minutes in seconds
 
     # Load all leads with emails
     enriched_file = "results/leads/enriched_leads.json"
@@ -489,7 +608,7 @@ def send_all_emails(dry_run: bool = False, force: bool = False):
         print("❌ No enriched leads found")
         return
 
-    with open(enriched_file, "r") as f:
+    with open(enriched_file, "r", encoding="utf-8") as f:
         leads = json.load(f)
 
     leads_with_email = [l for l in leads if l.get("contact_email")]
@@ -498,57 +617,112 @@ def send_all_emails(dry_run: bool = False, force: bool = False):
     print(f"{'='*55}")
     print(f"Leads with emails:  {len(leads_with_email)}")
     print(f"Daily limit:        {daily_limit}")
+    print(f"Session size:       {session_size}")
+    print(f"Session wait:       30-60 min")
     print(f"Dry run:            {dry_run}")
     print(f"{'='*55}\n")
 
-    # Check timing
-    if not force and not dry_run:
+    # Timing check (bypassed only by --ignore-timing or --force)
+    if not force and not ignore_timing and not dry_run:
         good_time, reason = is_good_send_time(config)
         if not good_time:
             print(f"⏰ {reason}")
-            print(f"   Run with --force to override timing")
+            print(f"   Run with --force or --ignore-timing to override timing")
             return
 
-    todays_count = get_todays_send_count(log)
-    print(f"Already sent today: {todays_count}/{daily_limit}\n")
-
     stats = {"sent": 0, "failed": 0, "skipped": 0, "complete": 0}
+    lead_index = 0        # tracks position in lead list across sessions
+    session_num = 0
 
-    for i, lead in enumerate(leads_with_email, 1):
-        name = lead["name"]
+    while lead_index < len(leads_with_email):
+        # Re-read log + count fresh each session (picks up new sends from this run)
+        log = load_send_log()
+        todays_count = get_todays_send_count(log)
 
-        if todays_count + stats["sent"] >= daily_limit and not force:
-            print(f"   🛑 Daily limit reached — stopping")
+        # Daily limit always enforced
+        if todays_count >= daily_limit and not force:
+            print(f"\n🛑 Daily limit reached ({todays_count}/{daily_limit}) — stopping")
             break
 
-        print(f"[{i}/{len(leads_with_email)}] {name}")
+        # Timing guard: stop sessions outside send window
+        if not force and not ignore_timing and not dry_run:
+            good_time, reason = is_good_send_time(config)
+            if not good_time:
+                print(f"\n⏰ Outside send window — {reason} — stopping")
+                break
 
-        result = send_email_sequence(
-            lead_name=name,
-            force=force,
-            dry_run=dry_run
-        )
+        session_num += 1
+        remaining_today = daily_limit - todays_count
+        this_session = min(session_size, remaining_today)
+        print(f"\n{'─'*55}")
+        print(f"📬 Session {session_num}  |  Sent today: {todays_count}/{daily_limit}  |  Sending up to {this_session} now")
+        print(f"{'─'*55}")
 
-        if result["success"]:
-            stats["sent"] += 1
-        elif result["action"] == "sequence_complete":
-            stats["complete"] += 1
-            print(f"   ✅ Sequence complete")
-        elif result["action"] and "skipped" in result["action"]:
-            stats["skipped"] += 1
-            print(f"   ⏭️  Skipped: {result['reason']}")
+        sent_this_session = 0
+
+        while sent_this_session < this_session and lead_index < len(leads_with_email):
+            lead = leads_with_email[lead_index]
+            lead_index += 1
+            name = lead["name"]
+
+            print(f"\n  [{lead_index}/{len(leads_with_email)}] {name}")
+
+            result = send_email_sequence(
+                lead_name=name,
+                force=force,
+                dry_run=dry_run,
+                ignore_timing=ignore_timing
+            )
+
+            if result["success"]:
+                stats["sent"] += 1
+                sent_this_session += 1
+            elif result["action"] == "sequence_complete":
+                stats["complete"] += 1
+                print(f"   ✅ Sequence complete")
+            elif result["action"] == "skipped_limit":
+                # Hit limit mid-session — stop immediately
+                print(f"   🛑 Daily limit hit — stopping session")
+                lead_index = len(leads_with_email)  # force outer loop exit
+                break
+            elif result["action"] and "skipped" in result["action"]:
+                stats["skipped"] += 1
+                print(f"   ⏭️  Skipped: {result['reason']}")
+            else:
+                stats["failed"] += 1
+
+            # Short gap between individual sends within a session (human-like)
+            if sent_this_session < this_session and lead_index < len(leads_with_email):
+                gap = random.uniform(20, 60)
+                print(f"   ⏳ {gap:.0f}s before next in session...")
+                if not dry_run:
+                    time.sleep(gap)
+
+        print(f"\n  ✔ Session {session_num} done — sent {sent_this_session} email(s)")
+
+        # Check if we should wait for the next session
+        if lead_index < len(leads_with_email) and not dry_run:
+            # Recheck daily limit before deciding to wait
+            log = load_send_log()
+            if get_todays_send_count(log) >= daily_limit and not force:
+                print(f"🛑 Daily limit reached — no more sessions today")
+                break
+
+            wait_secs = random.uniform(session_wait_min, session_wait_max)
+            wait_mins = wait_secs / 60
+            resume_at = (datetime.now() + timedelta(seconds=wait_secs)).strftime("%I:%M %p")
+            print(f"\n⏳ Waiting {wait_mins:.0f} min before next session (resumes ~{resume_at})...")
+            time.sleep(wait_secs)
+        elif dry_run and lead_index < len(leads_with_email):
+            # In dry-run, just continue without waiting
+            pass
         else:
-            stats["failed"] += 1
-
-        # Random delay between leads
-        if i < len(leads_with_email):
-            wait = random.uniform(15, 45)
-            print(f"   ⏳ Waiting {wait:.0f}s before next lead...")
-            time.sleep(wait)
+            break
 
     print(f"\n{'='*55}")
     print(f"📊 EMAIL SENDER COMPLETE")
     print(f"{'='*55}")
+    print(f"Sessions run:     {session_num}")
     print(f"Sent:             {stats['sent']}")
     print(f"Failed:           {stats['failed']}")
     print(f"Skipped:          {stats['skipped']}")
@@ -563,8 +737,9 @@ if __name__ == "__main__":
     import sys
     dry_run = "--dry-run" in sys.argv
     force = "--force" in sys.argv
+    ignore_timing = "--ignore-timing" in sys.argv
 
     if dry_run:
         print("🔍 DRY RUN MODE — No emails will actually be sent\n")
 
-    send_all_emails(dry_run=dry_run, force=force)
+    send_all_emails(dry_run=dry_run, force=force, ignore_timing=ignore_timing)

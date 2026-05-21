@@ -1,9 +1,10 @@
-﻿import asyncio
+import asyncio
 import json
 import os
 import re
 import smtplib
 import socket
+import sys
 import dns.resolver
 from datetime import datetime
 from dotenv import load_dotenv
@@ -12,12 +13,48 @@ from anthropic import Anthropic
 
 load_dotenv()
 
+class Symbol:
+    """Clean logging symbols that work across all terminals"""
+    USE_EMOJI = False # Set to True if your terminal supports UTF-8 emojis
+    
+    LIST = "📋" if USE_EMOJI else "[LIST]"
+    LEAD = "💎" if USE_EMOJI else "[LEAD]"
+    SEARCH = "🔍" if USE_EMOJI else "[SEARCH]"
+    STOP = "🛑" if USE_EMOJI else "[STOP]"
+    CHECK = "✅" if USE_EMOJI else "[OK]"
+    WORLD = "🌍" if USE_EMOJI else "[WORLD]"
+    WARN = "⚠️" if USE_EMOJI else "[WARN]"
+    AI = "🧠" if USE_EMOJI else "[AI]"
+    VIBE = "🎨" if USE_EMOJI else "[VIBE]"
+    TONE = "🗣️" if USE_EMOJI else "[TONE]"
+    PRIDE = "🆕" if USE_EMOJI else "[PRIDE]"
+    TARGET = "🎯" if USE_EMOJI else "[TARGET]"
+    TIME = "⏰" if USE_EMOJI else "[TIME]"
+    NURTURE = "🌱" if USE_EMOJI else "[NURTURE]"
+    REFERRAL = "🤝" if USE_EMOJI else "[REFERRAL]"
+    EMAIL = "📧" if USE_EMOJI else "[EMAIL]"
+    PHONE = "📞" if USE_EMOJI else "[PHONE]"
+    WHATSAPP = "💬" if USE_EMOJI else "[WHATSAPP]"
+    SOCIAL = "📱" if USE_EMOJI else "[SOCIAL]"
+    INSTAGRAM = "📸" if USE_EMOJI else "[INSTAGRAM]"
+    FACEBOOK = "📘" if USE_EMOJI else "[FACEBOOK]"
+    RETRY = "🔄" if USE_EMOJI else "[RETRY]"
+    BOT = "🛡️" if USE_EMOJI else "[BOT-WALL]"
+    WAIT = "⏳" if USE_EMOJI else "[WAIT]"
+    PITCH = "💡" if USE_EMOJI else "[PITCH]"
+    PAGE = "📄" if USE_EMOJI else "[PAGE]"
+    MAPS = "📍" if USE_EMOJI else "[MAPS]"
+    ERROR = "❌" if USE_EMOJI else "[ERROR]"
+    HUMAN = "🧑" if USE_EMOJI else "[USER]"
+
+sys.stdout.reconfigure(encoding='utf-8')
+
 os.makedirs("results/leads", exist_ok=True)
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────────────────────
 # DNS MX RECORD CHECK
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────────────────────
 def check_mx_record(domain: str) -> bool:
     try:
         records = dns.resolver.resolve(domain, 'MX')
@@ -26,9 +63,9 @@ def check_mx_record(domain: str) -> bool:
         return False
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────────────────────
 # SMTP VERIFICATION
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────────────────────
 def verify_smtp(email: str) -> dict:
     result = {
         "email": email,
@@ -93,17 +130,17 @@ def verify_smtp(email: str) -> dict:
                 result["reason"] = f"Uncertain SMTP response: {code}"
 
     except smtplib.SMTPConnectError:
-        # Server blocked check but domain and MX are valid â€” likely real
+        # Server blocked check but domain and MX are valid — likely real
         result["status"] = "likely_valid"
         result["confidence"] = 70
-        result["reason"] = "Domain and MX verified â€” server blocks external SMTP checks (normal)"
+        result["reason"] = "Domain and MX verified — server blocks external SMTP checks (normal)"
     except Exception as e:
         error = str(e).lower()
         if "timed out" in error or "timeout" in error:
             # Timeout usually means server is real but blocking checks
             result["status"] = "likely_valid"
             result["confidence"] = 65
-            result["reason"] = "Domain verified â€” timeout suggests real server blocking checks"
+            result["reason"] = "Domain verified — timeout suggests real server blocking checks"
         else:
             result["status"] = "risky"
             result["confidence"] = 45
@@ -112,28 +149,12 @@ def verify_smtp(email: str) -> dict:
     return result
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────────────────────
 # AI HELPERS
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────────────────────
 def get_ai_response(prompt: str, max_tokens: int = 500) -> str:
-    try:
-        claude = Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
-        response = claude.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=max_tokens,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return response.content[0].text
-    except Exception as e:
-        if True: # Fallback on any error
-            groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
-            response = groq.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                max_tokens=max_tokens,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            return response.choices[0].message.content
-        raise e
+    from utils.ai_client import ai_response
+    return ai_response(prompt, task="verify", max_tokens=max_tokens)
 
 
 def filter_relevant_emails(emails: list, business_name: str) -> list:
@@ -160,7 +181,7 @@ Rules for keeping an email:
 - anything@vconnect.com (directory)
 - unclaimed@anything.com (placeholder)
 
-When in doubt â€” REJECT. It's better to have no email than a wrong one.
+When in doubt — REJECT. It's better to have no email than a wrong one.
 
 Return ONLY valid JSON:
 {{
@@ -183,22 +204,22 @@ Return ONLY valid JSON:
     return emails
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────────────────────
 # BATCH EMAIL VERIFIER
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────────────────────
 def verify_all_emails(leads_file: str = "results/leads/enriched_leads.json"):
     with open(leads_file, "r") as f:
         leads = json.load(f)
 
-    print(f"\nðŸ“§ Email Verifier â€” Checking {len(leads)} leads\n")
-    print("=" * 60)
+    print(f"\n{Symbol.EMAIL} Email Verifier — Checking {len(leads)} leads\n")
+    print(f"=" * 60)
 
     verified_leads = []
     stats = {"valid": 0, "likely_valid": 0, "risky": 0, "invalid": 0, "no_email": 0}
 
     for i, lead in enumerate(leads, 1):
         name = lead["name"]
-        print(f"\n[{i}/{len(leads)}] ðŸ“§ {name}")
+        print(f"\n[{i}/{len(leads)}] {Symbol.EMAIL} {name}")
 
         enriched = lead.copy()
         all_emails = lead.get("all_emails") or []
@@ -209,12 +230,12 @@ def verify_all_emails(leads_file: str = "results/leads/enriched_leads.json"):
 
         # Filter out irrelevant emails first
         if all_emails:
-            print(f"   ðŸ§  Filtering {len(all_emails)} emails for relevance...")
+            print(f"   {Symbol.AI}  Filtering {len(all_emails)} emails for relevance...")
             all_emails = filter_relevant_emails(all_emails, name)
-            print(f"   âœ… {len(all_emails)} relevant emails remaining after filter")
+            print(f"   {Symbol.CHECK} {len(all_emails)} relevant emails remaining after filter")
 
         if not all_emails:
-            print(f"   âš ï¸  No email found for this lead")
+            print(f"   {Symbol.WARN}  No email found for this lead")
             enriched["email_verification"] = {
                 "status": "no_email",
                 "verified_emails": [],
@@ -230,17 +251,17 @@ def verify_all_emails(leads_file: str = "results/leads/enriched_leads.json"):
         best_confidence = 0
 
         for email in all_emails[:3]:  # Check top 3 emails per lead
-            print(f"   ðŸ” Checking: {email}")
+            print(f"   {Symbol.SEARCH} Checking: {email}")
             result = verify_smtp(email)
 
             status_icon = {
-                "valid": "âœ…",
+                "valid": "{Symbol.CHECK}",
                 "likely_valid": "ðŸŸ¢",
-                "risky": "âš ï¸ ",
+                "risky": "{Symbol.WARN} ",
                 "invalid": "âŒ"
             }.get(result["status"], "â“")
 
-            print(f"   {status_icon} {result['status'].upper()} ({result['confidence']}%) â€” {result['reason']}")
+            print(f"   {status_icon} {result['status'].upper()} ({result['confidence']}%) — {result['reason']}")
             verified_emails.append(result)
 
             if result["confidence"] > best_confidence:
@@ -259,11 +280,11 @@ def verify_all_emails(leads_file: str = "results/leads/enriched_leads.json"):
 
         # Final status
         if best_confidence >= 80:
-            print(f"   ðŸ’š Best email: {best_email} ({best_confidence}% confidence)")
+            print(f"   💚 Best email: {best_email} ({best_confidence}% confidence)")
         elif best_confidence >= 50:
-            print(f"   ðŸŸ¡ Best email: {best_email} ({best_confidence}% confidence â€” risky)")
+            print(f"   ðŸŸ¡ Best email: {best_email} ({best_confidence}% confidence — risky)")
         else:
-            print(f"   ðŸ”´ No reliable email found for {name}")
+            print(f"   {Symbol.SEARCH}´ No reliable email found for {name}")
 
         verified_leads.append(enriched)
 
@@ -273,16 +294,16 @@ def verify_all_emails(leads_file: str = "results/leads/enriched_leads.json"):
 
     # Summary
     print("\n" + "=" * 60)
-    print("ðŸ“Š EMAIL VERIFICATION COMPLETE")
+    print("📊 EMAIL VERIFICATION COMPLETE")
     print("=" * 60)
     print(f"Total leads processed:  {len(leads)}")
-    print(f"âœ… Valid emails:           {stats.get('valid', 0)}")
+    print(f"{Symbol.CHECK} Valid emails:           {stats.get('valid', 0)}")
     print(f"ðŸŸ¢ Likely valid emails:    {stats.get('likely_valid', 0)}")
-    print(f"âš ï¸  Risky emails:           {stats.get('risky', 0)}")
+    print(f"{Symbol.WARN}  Risky emails:           {stats.get('risky', 0)}")
     print(f"âŒ Invalid emails:          {stats.get('invalid', 0)}")
     print(f"ðŸš« No email found:          {stats.get('no_email', 0)}")
     usable = stats.get('valid', 0) + stats.get('likely_valid', 0)
-    print(f"\nðŸ’š Total usable emails:    {usable}/{len(leads)}")
+    print(f"\n💚 Total usable emails:    {usable}/{len(leads)}")
     print(f"\nUpdated: results/leads/enriched_leads.json")
     print("=" * 60)
 

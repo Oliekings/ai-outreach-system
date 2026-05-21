@@ -1,14 +1,51 @@
 import json
 import os
 import re
+import sys
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
 
+class Symbol:
+    """Clean logging symbols that work across all terminals"""
+    USE_EMOJI = False # Set to True if your terminal supports UTF-8 emojis
+    
+    LIST = "📋" if USE_EMOJI else "[LIST]"
+    LEAD = "💎" if USE_EMOJI else "[LEAD]"
+    SEARCH = "🔍" if USE_EMOJI else "[SEARCH]"
+    STOP = "🛑" if USE_EMOJI else "[STOP]"
+    CHECK = "✅" if USE_EMOJI else "[OK]"
+    WORLD = "🌍" if USE_EMOJI else "[WORLD]"
+    WARN = "⚠️" if USE_EMOJI else "[WARN]"
+    AI = "🧠" if USE_EMOJI else "[AI]"
+    VIBE = "🎨" if USE_EMOJI else "[VIBE]"
+    TONE = "🗣️" if USE_EMOJI else "[TONE]"
+    PRIDE = "🆕" if USE_EMOJI else "[PRIDE]"
+    TARGET = "🎯" if USE_EMOJI else "[TARGET]"
+    TIME = "⏰" if USE_EMOJI else "[TIME]"
+    NURTURE = "🌱" if USE_EMOJI else "[NURTURE]"
+    REFERRAL = "🤝" if USE_EMOJI else "[REFERRAL]"
+    EMAIL = "📧" if USE_EMOJI else "[EMAIL]"
+    PHONE = "📞" if USE_EMOJI else "[PHONE]"
+    WHATSAPP = "💬" if USE_EMOJI else "[WHATSAPP]"
+    SOCIAL = "📱" if USE_EMOJI else "[SOCIAL]"
+    INSTAGRAM = "📸" if USE_EMOJI else "[INSTAGRAM]"
+    FACEBOOK = "📘" if USE_EMOJI else "[FACEBOOK]"
+    RETRY = "🔄" if USE_EMOJI else "[RETRY]"
+    BOT = "🛡️" if USE_EMOJI else "[BOT-WALL]"
+    WAIT = "⏳" if USE_EMOJI else "[WAIT]"
+    PITCH = "💡" if USE_EMOJI else "[PITCH]"
+    PAGE = "📄" if USE_EMOJI else "[PAGE]"
+    MAPS = "📍" if USE_EMOJI else "[MAPS]"
+    ERROR = "❌" if USE_EMOJI else "[ERROR]"
+    HUMAN = "🧑" if USE_EMOJI else "[USER]"
+
+sys.stdout.reconfigure(encoding='utf-8')
+
 
 def load_config() -> dict:
-    with open("ceo_config.json", "r") as f:
+    with open("ceo_config.json", "r", encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -23,7 +60,7 @@ def load_all_logs() -> dict:
     }
     for key, path in log_files.items():
         if os.path.exists(path):
-            with open(path, "r") as f:
+            with open(path, "r", encoding="utf-8") as f:
                 logs[key] = json.load(f)
         else:
             logs[key] = {}
@@ -33,7 +70,7 @@ def load_all_logs() -> dict:
 def load_enriched_leads() -> list:
     path = "results/leads/enriched_leads.json"
     if os.path.exists(path):
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     return []
 
@@ -150,7 +187,7 @@ def build_daily_schedule() -> dict:
             "label": "Reply to interested leads",
             "count": len(interested_replies),
             "leads": [r["business"] for r in interested_replies],
-            "command": "python reply_monitor.py --send",
+            "command": "python response_management/reply_monitor.py --send",
             "urgency": "critical",
             "reason": f"{len(interested_replies)} hot lead(s) waiting for a reply"
         })
@@ -160,7 +197,7 @@ def build_daily_schedule() -> dict:
         "priority": 2,
         "type": "check_replies",
         "label": "Check inbox for new replies",
-        "command": "python reply_monitor.py",
+        "command": "python response_management/reply_monitor.py",
         "urgency": "high",
         "reason": "Daily inbox check to catch any new responses"
     })
@@ -174,7 +211,7 @@ def build_daily_schedule() -> dict:
             "label": f"Send WhatsApp messages ({to_send} leads)",
             "count": to_send,
             "leads": [l["name"] for l in leads_needing_wa[:to_send]],
-            "command": "python whatsapp_sender.py",
+            "command": "python outreach/whatsapp_sender.py",
             "urgency": "high",
             "reason": f"{wa_remaining} slots remaining of {daily_wa_limit} daily limit"
         })
@@ -188,7 +225,7 @@ def build_daily_schedule() -> dict:
             "label": f"Send emails ({to_send} leads)",
             "count": to_send,
             "leads": [l["name"] for l in leads_needing_email[:to_send]],
-            "command": "python email_sender.py",
+            "command": "python outreach/email_sender.py",
             "urgency": "medium",
             "reason": f"{emails_remaining} slots remaining of {daily_email_limit} daily limit"
         })
@@ -202,7 +239,7 @@ def build_daily_schedule() -> dict:
             "label": f"Send Instagram DMs ({to_send} leads)",
             "count": to_send,
             "leads": [l["name"] for l in leads_needing_ig[:to_send]],
-            "command": "python instagram_sender.py",
+            "command": "python outreach/instagram_sender.py",
             "urgency": "medium",
             "reason": f"{ig_remaining} slots remaining of {daily_ig_limit} daily limit"
         })
@@ -216,7 +253,7 @@ def build_daily_schedule() -> dict:
             "label": f"Send Facebook messages ({to_send} leads)",
             "count": to_send,
             "leads": [l["name"] for l in leads_needing_fb[:to_send]],
-            "command": "python facebook_sender.py",
+            "command": "python outreach/facebook_sender.py",
             "urgency": "low",
             "reason": f"{fb_remaining} slots remaining of {daily_fb_limit} daily limit"
         })
@@ -231,7 +268,7 @@ def build_daily_schedule() -> dict:
             "priority": 7,
             "type": "find_leads",
             "label": "Find new leads — pipeline running low",
-            "command": "python lead_finder.py",
+            "command": "python intelligence/lead_finder.py",
             "urgency": "medium",
             "reason": f"Only {total_active} active leads in pipeline"
         })
@@ -257,8 +294,8 @@ def build_daily_schedule() -> dict:
     # Save schedule
     os.makedirs("results/ceo", exist_ok=True)
     schedule_path = f"results/ceo/schedule_{today}.json"
-    with open(schedule_path, "w") as f:
-        json.dump(schedule, f, indent=2)
+    with open(schedule_path, "w", encoding="utf-8") as f:
+        json.dump(schedule, f, indent=2, ensure_ascii=False)
 
     return schedule
 
@@ -300,7 +337,7 @@ def _all_fb_sent(business_name: str, fb_entries: list) -> bool:
 
 def print_schedule(schedule: dict):
     print(f"\n{'═'*60}")
-    print(f"  📅 DAILY SCHEDULE — {schedule['date']}")
+    print(f"  {Symbol.TIME} DAILY SCHEDULE — {schedule['date']}")
     print(f"  Send window: {schedule['send_window']['start']}:00 — {schedule['send_window']['end']}:00")
     print(f"{'═'*60}")
 
@@ -317,7 +354,7 @@ def print_schedule(schedule: dict):
     print(f"  Instagram: {summary['ig_sent_today']} sent / {summary['ig_remaining']} remaining")
     print(f"  Facebook:  {summary['fb_sent_today']} sent / {summary['fb_remaining']} remaining")
 
-    print(f"\n  📋 TASKS FOR TODAY ({summary['total_tasks']} total)")
+    print(f"\n  {Symbol.LIST} TASKS FOR TODAY ({summary['total_tasks']} total)")
     print(f"  {'─'*56}")
     for task in schedule["tasks"]:
         urgency_icon = {

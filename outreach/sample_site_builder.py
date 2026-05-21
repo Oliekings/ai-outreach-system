@@ -1,40 +1,21 @@
-﻿import json
+import json
 import os
 import re
 import shutil
 from datetime import datetime
 from dotenv import load_dotenv
-from anthropic import Anthropic
-from groq import Groq
+import sys
+import pathlib
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+from utils.ai_client import ai_response as get_ai_response
 
 load_dotenv()
 
 os.makedirs("results/sites", exist_ok=True)
 os.makedirs("results/sites/previews", exist_ok=True)
 
-
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-# AI CLIENT
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-def get_ai_response(prompt: str, max_tokens: int = 4000) -> str:
-    try:
-        claude = Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
-        response = claude.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=max_tokens,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return response.content[0].text
-    except Exception as e:
-        if True: # Fallback on any error
-            groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
-            response = groq.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                max_tokens=max_tokens,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            return response.content[0].text
-        raise e
+from utils.deploy_site import deploy_site
 
 
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1249,12 +1230,17 @@ def build_sample_site(lead: dict) -> dict:
     with open(site_path, "w", encoding="utf-8") as f:
         f.write(html)
 
+    # Deploy site to GitHub Pages
+    print(f"   🚀 Deploying sample site for {safe_name} to GitHub Pages...")
+    site_url = deploy_site(safe_name, html)
+
     # Save metadata
     meta = {
         "business_name": name,
         "niche": niche,
         "city": lead.get("city", "Nigeria"),
         "site_path": site_path,
+        "site_url": site_url,
         "theme": theme,
         "content": content,
         "built_at": datetime.now().isoformat(),
@@ -1265,7 +1251,7 @@ def build_sample_site(lead: dict) -> dict:
     with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2, ensure_ascii=False)
 
-    print(f"   âœ… Site built: {site_path}")
+    print(f"   ✅ Site built and deployed: {site_path}")
 
     return meta
 
@@ -1303,6 +1289,7 @@ def build_all_sites(
             # Mark lead as having site built
             lead["site_built"] = True
             lead["site_path"] = meta["site_path"]
+            lead["site_url"] = meta.get("site_url", "")
 
         except Exception as e:
             print(f"\n   âŒ Failed: {str(e)[:80]}")
@@ -1312,10 +1299,12 @@ def build_all_sites(
     with open(enriched_file, "r") as f:
         all_leads = json.load(f)
 
-    built_names = {r["business_name"] for r in results}
+    built_map = {r["business_name"]: r for r in results}
     for lead in all_leads:
-        if lead["name"] in built_names:
+        if lead["name"] in built_map:
             lead["site_built"] = True
+            lead["site_path"] = built_map[lead["name"]]["site_path"]
+            lead["site_url"] = built_map[lead["name"]]["site_url"]
 
     with open(enriched_file, "w") as f:
         json.dump(all_leads, f, indent=2, ensure_ascii=False)

@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import json
 import os
 import re
@@ -8,8 +8,13 @@ import email
 from email.header import decode_header
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-from anthropic import Anthropic
-from groq import Groq
+import sys
+import pathlib
+
+sys.stdout.reconfigure(encoding='utf-8')
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+from utils.ai_client import ai_response as get_ai_response, safe_json
 
 load_dotenv()
 
@@ -17,47 +22,45 @@ os.makedirs("results/replies", exist_ok=True)
 os.makedirs("results/logs", exist_ok=True)
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-# AI CLIENT
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-def get_ai_response(prompt: str, max_tokens: int = 1000) -> str:
-    try:
-        claude = Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
-        response = claude.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=max_tokens,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return response.content[0].text
-    except Exception as e:
-        if True: # Fallback on any error
-            groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
-            response = groq.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                max_tokens=max_tokens,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            return response.choices[0].message.content
-        raise e
 
+# ─────────────────────────────────────────────────────────────────────────────
+# SYSTEM EMAIL FILTER — skip emails that are NOT from leads
+# ─────────────────────────────────────────────────────────────────────────────
+IGNORE_SENDERS = {
+    "noreply", "no-reply", "mailer-daemon", "postmaster",
+    "notifications", "notify", "alert", "donotreply",
+    "newsletter", "marketing", "billing", "feedback",
+    "support", "info", "security", "accounts", "team",
+    "updates", "digest", "automated", "system",
+}
+IGNORE_DOMAINS = {
+    "google.com", "youtube.com", "facebook.com", "instagram.com",
+    "snapchat.com", "telegram.org", "twitter.com", "x.com",
+    "linkedin.com", "amazon.com", "apple.com", "microsoft.com",
+    "brevo.com", "github.com", "paypal.com", "netflix.com",
+    "whatsapp.com", "tiktok.com", "pinterest.com", "reddit.com",
+    "zoom.us", "dropbox.com", "spotify.com", "uber.com",
+}
 
-def safe_json(text: str) -> dict:
-    try:
-        clean = re.sub(r'```json|```', '', text).strip()
-        start = clean.find('{')
-        end = clean.rfind('}')
-        if start != -1 and end != -1:
-            return json.loads(clean[start:end+1])
-    except:
-        pass
-    return {}
+def is_system_email(from_email: str) -> bool:
+    """Check if an email is from a system/notification sender (not a lead)."""
+    if not from_email:
+        return True
+    email_lower = from_email.lower().strip()
+    local_part = email_lower.split("@")[0] if "@" in email_lower else ""
+    if any(prefix in local_part for prefix in IGNORE_SENDERS):
+        return True
+    domain = email_lower.split("@")[1] if "@" in email_lower else ""
+    if domain in IGNORE_DOMAINS:
+        return True
+    return False
 
 
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # CONFIG
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def load_config() -> dict:
-    with open("ceo_config.json", "r") as f:
+    with open("ceo_config.json", "r", encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -67,7 +70,7 @@ def load_config() -> dict:
 def load_reply_log() -> dict:
     path = "results/replies/reply_log.json"
     if os.path.exists(path):
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     return {
         "replies": [],
@@ -82,7 +85,7 @@ def load_reply_log() -> dict:
 
 
 def save_reply_log(log: dict):
-    with open("results/replies/reply_log.json", "w") as f:
+    with open("results/replies/reply_log.json", "w", encoding="utf-8") as f:
         json.dump(log, f, indent=2, ensure_ascii=False)
 
 
@@ -99,7 +102,7 @@ def find_lead_by_email(email_address: str) -> dict:
     if not os.path.exists(enriched_file):
         return {}
 
-    with open(enriched_file, "r") as f:
+    with open(enriched_file, "r", encoding="utf-8") as f:
         leads = json.load(f)
 
     email_lower = email_address.lower().strip()
@@ -439,6 +442,10 @@ def fetch_email_replies(since_days: int = 3) -> list:
                 if imap_user.lower() in from_email.lower():
                     continue
 
+                # Skip system/notification emails (Google, Snapchat, etc.)
+                if is_system_email(from_email):
+                    continue
+
                 # Get message body
                 body = ""
                 if msg.is_multipart():
@@ -503,7 +510,7 @@ def process_replies(replies: list, dry_run: bool = False) -> dict:
     enriched_file = "results/leads/enriched_leads.json"
     all_leads = []
     if os.path.exists(enriched_file):
-        with open(enriched_file, "r") as f:
+        with open(enriched_file, "r", encoding="utf-8") as f:
             all_leads = json.load(f)
 
     stats = {
@@ -535,14 +542,11 @@ def process_replies(replies: list, dry_run: bool = False) -> dict:
             lead = find_lead_by_name_in_subject(subject, all_leads)
 
         if not lead:
-            print(f"   âš ï¸  No matching lead found â€” logging as unknown")
-            lead = {
-                "name": reply.get("from_name") or from_email,
-                "contact_email": from_email
-            }
+            print(f"   ⏭️  No matching lead for {from_email} — skipping (not outreach-related)")
+            continue
 
         business_name = lead.get("name", from_email)
-        print(f"   ðŸ¢ Matched to: {business_name}")
+        print(f"   🏢 Matched to: {business_name}")
 
         # Classify the reply
         print(f"   ðŸ§  Classifying intent...")
@@ -610,7 +614,7 @@ def process_replies(replies: list, dry_run: bool = False) -> dict:
     save_reply_log(log)
 
     if not dry_run and all_leads:
-        with open(enriched_file, "w") as f:
+        with open(enriched_file, "w", encoding="utf-8") as f:
             json.dump(all_leads, f, indent=2, ensure_ascii=False)
 
     # Save processed replies for review
