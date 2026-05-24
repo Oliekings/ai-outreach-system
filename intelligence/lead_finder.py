@@ -315,7 +315,20 @@ def load_existing_leads() -> list:
 
 
 async def main():
-    # Check if there are already 10 or more leads with pending/active outreach messages
+    config = load_config()
+    progress = load_progress()
+    outreach_cfg = config.get("outreach", {})
+
+    # Calculate dynamic backlog threshold based on configured targets
+    morning_limit = outreach_cfg.get("morning_leads_limit", 10)
+    afternoon_limit = outreach_cfg.get("afternoon_leads_limit", 10)
+    evening_limit = outreach_cfg.get("evening_leads_limit", 10)
+    total_daily_target = morning_limit + afternoon_limit + evening_limit
+    
+    # Dynamic backlog threshold: double the daily target, minimum 30 leads
+    backlog_threshold = max(total_daily_target * 2, 30)
+
+    # Check if there are already pending leads with pending/active outreach messages exceeding the threshold
     master_seq_path = "results/messages/sequences/master_sequence.json"
     if os.path.exists(master_seq_path):
         try:
@@ -325,25 +338,39 @@ async def main():
                 1 for lead_seq in master_seq
                 if any(step.get("status") in ["approved", "queued"] for step in lead_seq.get("sequence", []))
             )
-            if pending_leads_count >= 10:
-                print(f"\n{Symbol.WARN} Outreach backlog has {pending_leads_count} pending leads (limit is 10).")
+            if pending_leads_count >= backlog_threshold:
+                print(f"\n{Symbol.WARN} Outreach backlog has {pending_leads_count} pending leads (limit is {backlog_threshold}).")
                 print("⚠️  Skipping lead discovery today to prevent accumulation of extra leads when outreach is not yet fully functional.\n")
                 return
         except Exception as e:
             print(f"⚠️  Could not check outreach backlog: {e}")
 
-    config = load_config()
-    progress = load_progress()
-
     city = get_todays_city(config, progress)
-    daily_limit = 10  # Always exactly 10 leads per run
+    
+    # Determine the target batch size based on the current time of day
+    now = datetime.now()
+    outreach_cfg = config.get("outreach", {})
+    if now.hour < 12:  # Morning
+        daily_limit = outreach_cfg.get("morning_leads_limit", 10)
+        period_name = "Morning"
+    elif 12 <= now.hour < 17:  # Afternoon
+        daily_limit = outreach_cfg.get("afternoon_leads_limit", 10)
+        period_name = "Afternoon"
+    else:  # Evening
+        daily_limit = outreach_cfg.get("evening_leads_limit", 10)
+        period_name = "Evening"
+
+    if daily_limit <= 0:
+        print(f"\n{Symbol.WARN} Lead discovery limit for the {period_name} period is set to {daily_limit}.")
+        print("⚠️  Skipping lead discovery for this period.\n")
+        return
 
     # Pick today's niche
     niche = get_todays_niche(config, progress)
     print(f"\n{'='*55}")
     print(f"{Symbol.SEARCH} TODAY'S NICHE: {niche.upper()}")
     print(f"{Symbol.MAPS} CITY: {city}")
-    print(f"{Symbol.SEARCH} TARGET: {daily_limit} fresh leads")
+    print(f"{Symbol.SEARCH} TARGET: {daily_limit} fresh leads ({period_name} run)")
     print(f"{Symbol.WAIT} DATE: {datetime.now().strftime('%A, %d %B %Y')}")
     print(f"{'='*55}\n")
 

@@ -1,10 +1,12 @@
 import json
 import os
 import re
+import sys
 from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
+sys.stdout.reconfigure(encoding='utf-8')
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -483,16 +485,27 @@ def update_config_for_city(city_name: str):
 
     config["outreach"]["cities"] = [city_name]
     config["outreach"]["niches"] = strategy["recommended_niches"]
-    config["outreach"]["daily_email_limit"] = strategy["suggested_daily_emails"]
-    config["outreach"]["daily_whatsapp_limit"] = strategy["suggested_daily_wa"]
+
+    # Respect lock_manual_limits (defaulting to True)
+    lock_limits = config["outreach"].get("lock_manual_limits", True)
+
+    if not lock_limits or "daily_email_limit" not in config["outreach"]:
+        config["outreach"]["daily_email_limit"] = strategy["suggested_daily_emails"]
+        print(f"   Daily email limit set to: {strategy['suggested_daily_emails']}")
+    else:
+        print(f"   🔒 Daily email limit preserved at: {config['outreach']['daily_email_limit']} (locked)")
+
+    if not lock_limits or "daily_whatsapp_limit" not in config["outreach"]:
+        config["outreach"]["daily_whatsapp_limit"] = strategy["suggested_daily_wa"]
+        print(f"   Daily WA limit set to: {strategy['suggested_daily_wa']}")
+    else:
+        print(f"   🔒 Daily WA limit preserved at: {config['outreach']['daily_whatsapp_limit']} (locked)")
 
     with open("ceo_config.json", "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2, ensure_ascii=False)
 
     print(f"✅ Config updated for {city_name}")
     print(f"   Best niches: {', '.join(strategy['recommended_niches'])}")
-    print(f"   Daily email limit: {strategy['suggested_daily_emails']}")
-    print(f"   Daily WA limit: {strategy['suggested_daily_wa']}")
 
 
 if __name__ == "__main__":

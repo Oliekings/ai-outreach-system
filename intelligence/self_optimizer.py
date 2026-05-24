@@ -162,11 +162,19 @@ Return ONLY valid JSON:
             with open(self.config_path, "r", encoding="utf-8") as f:
                 config = json.load(f)
             
+            # Check lock_manual_limits (defaulting to True)
+            lock_limits = config.get("outreach", {}).get("lock_manual_limits", True)
+
             changes_made = 0
             for opt in optimizations:
-                target = opt.get("target")
+                target = opt.get("target") or ""
                 new_val = opt.get("new_value")
                 
+                # Check lock safety
+                if lock_limits and ("daily_whatsapp_limit" in target.lower() or "daily_email_limit" in target.lower()):
+                    print(f"      🔒 Skipping target '{target}' because manual limits are locked.")
+                    continue
+
                 # Simple path traversal for "config.section.key"
                 parts = target.split('.')
                 if parts[0] == "config":

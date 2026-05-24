@@ -544,6 +544,14 @@ def run_command():
         if os.path.exists(venv_python):
             cmd_parts[0] = venv_python
 
+    # Copy environment and inject/prepend current working directory into PYTHONPATH
+    env = os.environ.copy()
+    cwd = os.getcwd()
+    if "PYTHONPATH" in env:
+        env["PYTHONPATH"] = cwd + os.pathsep + env["PYTHONPATH"]
+    else:
+        env["PYTHONPATH"] = cwd
+
     try:
         result = subprocess.run(
             cmd_parts,
@@ -551,7 +559,8 @@ def run_command():
             text=True,
             encoding='utf-8',
             timeout=300,
-            cwd=os.getcwd()
+            cwd=cwd,
+            env=env
         )
         return jsonify({
             "success": result.returncode == 0,
@@ -603,13 +612,22 @@ def stream_command():
                 if os.path.exists(venv_python):
                     cmd_parts[0] = venv_python
 
+            # Copy environment and inject/prepend current working directory into PYTHONPATH
+            env = os.environ.copy()
+            cwd = os.getcwd()
+            if "PYTHONPATH" in env:
+                env["PYTHONPATH"] = cwd + os.pathsep + env["PYTHONPATH"]
+            else:
+                env["PYTHONPATH"] = cwd
+
             process = subprocess.Popen(
                 cmd_parts,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
                 encoding='utf-8',
-                cwd=os.getcwd(),
+                cwd=cwd,
+                env=env,
                 bufsize=1
             )
             

@@ -17,6 +17,10 @@
         "daily_whatsapp_limit": 20,
         "daily_instagram_limit": 5,
         "daily_facebook_limit": 10,
+        "lock_manual_limits": true,
+        "morning_leads_limit": 10,
+        "afternoon_leads_limit": 10,
+        "evening_leads_limit": 10,
         "send_days": [
             "Monday",
             "Tuesday",

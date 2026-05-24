@@ -1047,7 +1047,11 @@ const RepliesPage = {
 
                 <div class="reply-header">
                     <div>
-                        <div class="reply-business">{{ reply.business }}</div>
+                        <div class="reply-business">
+                            <span v-if="reply.channel === 'whatsapp'" style="margin-right: 4px;" title="WhatsApp Reply">💬</span>
+                            <span v-else style="margin-right: 4px;" title="Email Reply">📧</span>
+                            {{ reply.business }}
+                        </div>
                         <div class="reply-email">{{ reply.from_email }}</div>
                     </div>
                     <div class="flex gap-2 items-center">
@@ -2109,6 +2113,24 @@ const SettingsPage = {
             </div>
 
             <div class="card mb-3" v-if="localConfig.outreach">
+                <div class="card-title">Lead Generation Batch Targets</div>
+                <div class="grid-3">
+                    <div class="form-group">
+                        <label>Morning Target (9:00 AM)</label>
+                        <input type="number" v-model="localConfig.outreach.morning_leads_limit" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Afternoon Target (1:00 PM)</label>
+                        <input type="number" v-model="localConfig.outreach.afternoon_leads_limit" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Evening Target (5:00 PM)</label>
+                        <input type="number" v-model="localConfig.outreach.evening_leads_limit" class="form-input">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-3" v-if="localConfig.outreach">
                 <div class="card-title">Targeting</div>
                 <div class="form-group">
                     <label>Country</label>
@@ -2163,6 +2185,24 @@ const SettingsPage = {
         const loading = ref(false)
         const localConfig = ref(JSON.parse(JSON.stringify(props.config)))
         const envVars = ref({})
+
+        // Initialize limits if not present
+        const initLimits = (cfg) => {
+            if (cfg && cfg.outreach) {
+                if (cfg.outreach.morning_leads_limit === undefined) cfg.outreach.morning_leads_limit = 10;
+                if (cfg.outreach.afternoon_leads_limit === undefined) cfg.outreach.afternoon_leads_limit = 10;
+                if (cfg.outreach.evening_leads_limit === undefined) cfg.outreach.evening_leads_limit = 10;
+            }
+        };
+        initLimits(localConfig.value);
+
+        // Keep localConfig in sync if parent config changes
+        watch(() => props.config, (newVal) => {
+            if (newVal) {
+                localConfig.value = JSON.parse(JSON.stringify(newVal));
+                initLimits(localConfig.value);
+            }
+        }, { deep: true });
 
         onMounted(async () => {
             try {
@@ -2633,7 +2673,8 @@ const App = {
                     <OverviewPage v-if="page === 'overview'"
                                   :state="state" :audit="latestAudit"
                                   :schedule="schedule" :config="config"
-                                  @run-task="handleRunTask" />
+                                  @run-task="handleRunTask"
+                                  @run-command="runStreamingCommand" />
 
                     <LeadsPage v-if="page === 'leads'"
                                :leads="leads"
@@ -2907,7 +2948,10 @@ const App = {
             isRunning.value = true
             activeCommand.value = command
 
-            const url = `${API}/stream-command?command=${encodeURIComponent(command)}`
+            let url = `${API}/stream-command?command=${encodeURIComponent(command)}`
+            if (authKey.value) {
+                url += `&auth_key=${encodeURIComponent(authKey.value)}`
+            }
             const eventSource = new EventSource(url)
 
             eventSource.onmessage = (event) => {
@@ -2995,7 +3039,7 @@ const App = {
             scaleAnalytics, campaigns, expansionRoadmap,
             lessons, optimizations, isRunningEvolution,
             mobileMenuOpen, toggleMobileMenu,
-            refreshData, runFullCeo, findLeads, enrichLeads, writeMessages, checkInbox, handleRunTask, runEvolution, closeTerminal,
+            refreshData, runFullCeo, findLeads, enrichLeads, writeMessages, checkInbox, handleRunTask, runStreamingCommand, runEvolution, closeTerminal,
             authKey, isAuthenticated, loginKey, loginError, loggingIn, handleLogin, handleLogout
         }
     }

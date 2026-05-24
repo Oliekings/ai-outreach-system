@@ -4,7 +4,22 @@ import re
 import time
 import random
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    import sys
+    print("=" * 80)
+    print("❌ IMPORT ERROR: 'python-dotenv' package is missing or conflicted.")
+    print("This usually happens when running the script using the global Python interpreter")
+    print("instead of the project's virtual environment.")
+    print("\n👉 Please run the script using the virtual environment:")
+    print("   venv\\Scripts\\python.exe outreach\\email_sender.py " + " ".join(sys.argv[1:]))
+    print("\nOr activate the virtual environment first, or install requirements:")
+    print("   pip install python-dotenv")
+    print("=" * 80)
+    sys.exit(1)
+
+load_dotenv()
 import smtplib
 import ssl
 from email.mime.text import MIMEText
@@ -50,12 +65,42 @@ def save_send_log(log: dict):
 
 
 def already_sent(log: dict, email: str, business_name: str, email_key: str) -> bool:
+    try:
+        curr_idx = int(email_key.split("_")[1])
+    except:
+        curr_idx = 0
+
+    # 1. Check if the business has already successfully received this email_key or a LATER one in the sequence on ANY address
+    # This prevents sending to alternative emails of the same business if one already succeeded.
     for entry in log["emails"]:
-        if (entry["to"] == email and
-            entry["business"] == business_name and
-            entry["email_key"] == email_key):
+        entry_business = entry.get("business") or ""
+        entry_email_key = entry.get("email_key") or ""
+        try:
+            entry_idx = int(entry_email_key.split("_")[1])
+        except:
+            entry_idx = 0
+
+        if (entry_business.lower().strip() == business_name.lower().strip() and
+            entry_idx >= curr_idx and
+            entry.get("success")):
             return True
+
+    # 2. Check if this specific email address has had a successful delivery of this key or a LATER one
+    for entry in log["emails"]:
+        entry_to = entry.get("to") or ""
+        email_to = email or ""
+        entry_business = entry.get("business") or ""
+        
+        if entry_to.lower() == email_to.lower() and entry_business.lower().strip() == business_name.lower().strip():
+            entry_email_key = entry.get("email_key") or ""
+            try:
+                entry_idx = int(entry_email_key.split("_")[1])
+            except:
+                entry_idx = 0
+            if entry_idx >= curr_idx and entry.get("success"):
+                return True
     return False
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -185,7 +230,7 @@ def send_via_brevo_smtp(
                 msg.attach(attachment)
 
         context = ssl.create_default_context()
-        with smtplib.SMTP("smtp-relay.brevo.com", 587) as server:
+        with smtplib.SMTP("smtp-relay.brevo.com", 587, timeout=15) as server:
             server.ehlo()
             server.starttls(context=context)
             server.login(smtp_user, smtp_pass)
@@ -393,6 +438,13 @@ def send_email_sequence(
         if key not in emails:
             continue
         
+        # Check sequence file status first
+        email_idx = int(key.split("_")[1]) - 1
+        if email_idx < len(email_seq_items):
+            status = email_seq_items[email_idx].get("status", "queued")
+            if status == "sent":
+                continue  # Cleanly bypass if sequence indicates this email has already been sent
+        
         # Check which of the emails have not been sent yet for this key
         key_unsent = [e for e in emails_to_try if not already_sent(log, e, lead_name, key)]
         
@@ -534,6 +586,7 @@ def send_email_sequence(
             log["stats"]["sent"] = log["stats"].get("sent", 0) + 1
             print(f"   ✅ Sent successfully to {to_email} via {send_result['method']}")
             any_success = True
+            break  # Stop trying other email addresses for this lead
         else:
             log["stats"]["failed"] = log["stats"].get("failed", 0) + 1
             print(f"   ❌ Failed to send to {to_email}: {send_result.get('error')}")
@@ -548,7 +601,10 @@ def send_email_sequence(
         result["reason"] = f"Daily limit reached ({get_todays_send_count(log)}/{daily_limit})"
         return result
 
-    if any_success:
+    if sends_attempted > 0:
+        save_send_log(log)
+
+    if any_success and not dry_run:
         # Update sequence status to 'sent' in sequence files if successful
         try:
             # 1. Update individual sequence file
@@ -598,9 +654,9 @@ def send_email_sequence(
 def send_all_emails(dry_run: bool = False, force: bool = False, ignore_timing: bool = False):
     config = load_config()
     daily_limit = config["outreach"]["daily_email_limit"]
-    session_size = 2          # emails per session
-    session_wait_min = 30 * 60   # 30 minutes in seconds
-    session_wait_max = 60 * 60   # 60 minutes in seconds
+    session_size = daily_limit if (force or ignore_timing) else 2          # emails per session
+    session_wait_min = 0 if (force or ignore_timing) else 30 * 60   # 30 minutes in seconds
+    session_wait_max = 0 if (force or ignore_timing) else 60 * 60   # 60 minutes in seconds
 
     # Load all leads with emails
     enriched_file = "results/leads/enriched_leads.json"
@@ -692,7 +748,7 @@ def send_all_emails(dry_run: bool = False, force: bool = False, ignore_timing: b
                 stats["failed"] += 1
 
             # Short gap between individual sends within a session (human-like)
-            if sent_this_session < this_session and lead_index < len(leads_with_email):
+            if result["success"] and sent_this_session < this_session and lead_index < len(leads_with_email):
                 gap = random.uniform(20, 60)
                 print(f"   ⏳ {gap:.0f}s before next in session...")
                 if not dry_run:

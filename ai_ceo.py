@@ -121,7 +121,12 @@ def run_ai_ceo(
     # ── STEP 3: Review messages
     if mode in ["full", "review"]:
         print("\n👀 Reviewing all pending messages...")
-        review_results = review_all_pending_messages()
+        review_deadline_hours = config["owner"].get("review_deadline_hours", 12)
+        autonomous_fallback = config["owner"].get("autonomous_fallback", True)
+        should_act_autonomous = autonomous or (
+            autonomous_fallback and _deadline_passed(review_deadline_hours)
+        )
+        review_results = review_all_pending_messages(autonomous=should_act_autonomous)
         print(f"   {Symbol.CHECK} Reviewed: {review_results['reviewed']}")
         print(f"   {Symbol.CHECK} Approved: {review_results['approved']}")
         print(f"   ✏️  Edited:   {review_results['needs_edit']}")
@@ -205,17 +210,35 @@ def run_ai_ceo(
 
 
 def _deadline_passed(hours: int) -> bool:
-    """Check if the human review deadline has passed today"""
-    now = datetime.now()
-    deadline_hour = now.replace(
-        hour=min(now.hour, 23),
-        minute=0, second=0, microsecond=0
-    )
-    # If it's past the configured send start time plus deadline hours
-    config = load_config()
-    send_start = config["outreach"]["send_hours"]["start"]
-    deadline_time = now.replace(hour=send_start) + __import__('datetime').timedelta(hours=hours)
-    return now > deadline_time
+    """Check if the human review deadline has passed since any pending sequence was last updated"""
+    seq_dir = "results/messages/sequences"
+    if not os.path.isdir(seq_dir):
+        return False
+        
+    pending_files = []
+    for f in os.listdir(seq_dir):
+        if f.endswith("_sequence.json") and f != "master_sequence.json":
+            path = os.path.join(seq_dir, f)
+            try:
+                with open(path, "r", encoding="utf-8") as file:
+                    seq = json.load(file)
+                # If there is any message in status "queued"
+                if any(m.get("status") == "queued" for m in seq):
+                    pending_files.append(path)
+            except:
+                pass
+                
+    if not pending_files:
+        return False
+        
+    # If any of the pending sequences has been waiting for more than 12 hours
+    for path in pending_files:
+        mtime = os.path.getmtime(path)
+        elapsed = (datetime.now() - datetime.fromtimestamp(mtime)).total_seconds()
+        if elapsed > (hours * 3600):
+            return True
+            
+    return False
 
 
 # ─────────────────────────────────────────────────────────────────────────────

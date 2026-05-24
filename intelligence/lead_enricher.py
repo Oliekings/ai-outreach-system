@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 from groq import Groq
 from anthropic import Anthropic
 
+# Add project root to path for robust imports
+sys.path.insert(0, os.getcwd())
+
 sys.stdout.reconfigure(encoding='utf-8')
 load_dotenv()
 
@@ -1743,19 +1746,37 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
             merged_enriched[l['name']] = l  # new data wins
     all_enriched = list(merged_enriched.values())
 
+    # ── Filter out uncontactable leads (no email AND no whatsapp contact) ──
+    filtered_enriched = []
+    removed_names = set()
+    for l in all_enriched:
+        has_email = bool(l.get("contact_email")) or bool(l.get("all_emails"))
+        has_phone = bool(l.get("contact_whatsapp")) or bool(l.get("all_phones")) or bool(l.get("phone"))
+        if not has_email and not has_phone:
+            removed_names.add(l["name"])
+            print(f"   {Symbol.WARN} Removing uncontactable lead (no email & no phone/whatsapp): {l['name']}")
+        else:
+            filtered_enriched.append(l)
+    all_enriched = filtered_enriched
+
     # Save full results
     os.makedirs("results/leads", exist_ok=True)
     with open("results/leads/enriched_leads.json", "w", encoding="utf-8") as f:
         json.dump(all_enriched, f, indent=2, ensure_ascii=False)
-    print(f"   {Symbol.CHECK} Saved {len(all_enriched)} total enriched leads to enriched_leads.json")
+    print(f"   {Symbol.CHECK} Saved {len(all_enriched)} total enriched leads to enriched_leads.json (removed {len(removed_names)} uncontactable leads)")
 
-    # Write enriched:true back to leads.json so re-runs skip them
+    # Write enriched:true back to leads.json so re-runs skip them, but filter out removed ones
     enriched_names = {l['name'] for l in all_enriched}
+    filtered_all_leads = []
     for l in all_leads:
+        if l.get('name') in removed_names:
+            continue
         if l.get('name') in enriched_names:
             l['enriched'] = True
+        filtered_all_leads.append(l)
+
     with open(leads_file, "w", encoding="utf-8") as f:
-        json.dump(all_leads, f, indent=2, ensure_ascii=False)
+        json.dump(filtered_all_leads, f, indent=2, ensure_ascii=False)
     print(f"   {Symbol.CHECK} Updated leads.json — {len(enriched_names)} leads marked as enriched")
 
     # Save clean contact sheet

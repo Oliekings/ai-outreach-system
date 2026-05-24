@@ -82,11 +82,43 @@ def approve_all_by_intent(intent: str):
             reply["approved_at"] = datetime.now().isoformat()
             count += 1
     save_reply_log(log)
-    print(f"âœ… Approved {count} {intent} replies")
+    print(f"✅ Approved {count} {intent} replies")
     return count
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+def auto_approve_pending_replies(deadline_hours: int = 12) -> int:
+    """
+    Automatically transition pending review replies to ready_to_send if they 
+    have been in the queue for longer than the review deadline.
+    """
+    log = load_reply_log()
+    count = 0
+    now = datetime.now()
+    
+    for reply in log.get("replies", []):
+        if reply.get("status") == "pending_review":
+            processed_str = reply.get("date_processed")
+            if not processed_str:
+                continue
+            try:
+                processed_dt = datetime.fromisoformat(processed_str)
+                elapsed = now - processed_dt
+                if elapsed.total_seconds() > (deadline_hours * 3600):
+                    reply["status"] = "ready_to_send"
+                    reply["approved_at"] = now.isoformat()
+                    reply["action_taken"] = f"Auto-approved by AI CEO (Deadline {deadline_hours}h passed)"
+                    print(f"🤖 Auto-approved reply for {reply.get('business')} ({elapsed.total_seconds() / 3600:.1f}h elapsed)")
+                    count += 1
+            except Exception as e:
+                print(f"⚠️ Error parsing date_processed for {reply.get('business')}: {e}")
+                
+    if count > 0:
+        save_reply_log(log)
+        
+    return count
+
+
+# ——————————————————————————————————————————————————————————————————————————————————————————————————
 # NURTURE MANAGER
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def get_nurture_queue() -> list:
@@ -280,12 +312,17 @@ if __name__ == "__main__":
     elif "--approve-all-questions" in sys.argv:
         approve_all_by_intent("question")
 
+    elif "--auto-approve" in sys.argv:
+        config = load_config()
+        review_deadline_hours = config.get("owner", {}).get("review_deadline_hours", 12)
+        auto_approve_pending_replies(review_deadline_hours)
+
     elif "--nurture" in sys.argv:
         dry_run = "--dry-run" in sys.argv
         send_nurture_messages(dry_run=dry_run)
 
     elif "--send" in sys.argv:
-        from .reply_monitor import send_queued_replies
+        from response_management.reply_monitor import send_queued_replies
         dry_run = "--dry-run" in sys.argv
         send_queued_replies(dry_run=dry_run)
 

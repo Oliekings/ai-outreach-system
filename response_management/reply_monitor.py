@@ -157,7 +157,7 @@ Intent definitions:
 - not_interested: They explicitly said no, not interested, or already have someone
 - question: They asked specific questions without committing either way
 - out_of_office: Auto-reply, vacation, or out of office message
-- other: Anything else â€” wrong person, bounce, unclear
+- other: Anything else — wrong person, bounce, unclear
 """
     try:
         response = get_ai_response(prompt, max_tokens=500)
@@ -165,7 +165,7 @@ Intent definitions:
         if result:
             return result
     except Exception as e:
-        print(f"   âš ï¸  Classification failed: {e}")
+        print(f"   ⚠️   Classification failed: {e}")
 
     # Fallback classification using keywords
     text_lower = reply_text.lower()
@@ -199,9 +199,9 @@ Intent definitions:
             "sentiment": "neutral", "summary": "Unclear intent"}
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# —————————————————————————————————————————————————————————————————————————————
 # REPLY DRAFTER
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# —————————————————————————————————————————————————————————————————————————————
 def draft_reply(
     classification: dict,
     lead: dict,
@@ -243,19 +243,18 @@ Context:
 - Tone: {tone}
 - Vibe: {vibe}
 - We have built them a sample website: {has_site}
-- Calendly booking link: {calendly_link}
 - Our name: {from_name}
 
 Write a reply that:
 1. Opens with "{greeting}" and genuine warmth
 2. Acknowledges their specific reply naturally
 3. Answers any questions they asked directly
-4. If we built a sample site â€” mention it naturally and offer to share it
-5. Suggests a quick 15-minute call â€” include Calendly link if available
+4. If we built a sample site — mention it naturally and offer to send them the custom link/preview right here in this thread
+5. DO NOT suggest a phone call, voice call, zoom call, or meeting anywhere. Suggest continuing the discussion right here via text/email.
 6. Ends warmly and personally
 7. Maximum 150 words
 8. Sounds like a real human expert, not a salesperson
-9. Never use words like "leverage", "synergy", "optimize"
+9. Never use words like "leverage", "synergy", "optimize", "call", "schedule", "zoom", "calendly", "phone"
 
 Return ONLY valid JSON:
 {{
@@ -282,12 +281,12 @@ Context:
 Write a reply that:
 1. Opens with "{greeting}"
 2. Answers each question clearly and specifically
-3. Makes them feel genuinely helped â€” not sold to
-4. If they asked about pricing â€” give a range naturally
-   (basic website â‚¦{config['services']['basic_website_ngn']:,},
-    full package â‚¦{config['services']['full_package_ngn']:,},
-    monthly retainer â‚¦{config['services']['monthly_retainer_ngn']:,})
-5. Ends with a soft invitation to chat more
+3. Makes them feel genuinely helped — not sold to
+4. If they asked about pricing — give a range naturally
+   (basic website ₦{config['services']['basic_website_ngn']:,},
+    full package ₦{config['services']['full_package_ngn']:,},
+    monthly retainer ₦{config['services']['monthly_retainer_ngn']:,})
+5. Ends with a soft invitation to continue chatting and discussing right here via text/email. Never suggest a phone call, scheduling, or voice call anywhere.
 6. Maximum 180 words
 
 Return ONLY valid JSON:
@@ -539,6 +538,8 @@ def process_replies(replies: list, dry_run: bool = False) -> dict:
         # Find matching lead
         lead = find_lead_by_email(from_email)
         if not lead:
+            lead = find_lead_by_phone(from_email, all_leads)
+        if not lead:
             lead = find_lead_by_name_in_subject(subject, all_leads)
 
         if not lead:
@@ -708,10 +709,13 @@ def run_reply_monitor(dry_run: bool = False, send_replies: bool = False):
     print(f"{'='*55}\n")
 
     # Fetch email replies
-    print("ðŸ“§ Checking email inbox...")
+    print("📧 Checking email inbox...")
     email_replies = fetch_email_replies(since_days=7)
 
-    all_replies = email_replies
+    # Fetch WhatsApp replies
+    whatsapp_replies = fetch_whatsapp_replies()
+
+    all_replies = email_replies + whatsapp_replies
 
     if not all_replies:
         print("\nâœ… No new replies found")
@@ -752,6 +756,374 @@ def run_reply_monitor(dry_run: bool = False, send_replies: bool = False):
             print(f"    Reply: {r['body_preview'][:80]}...")
             print(f"    Status: {r['status']}")
             print()
+
+
+def find_lead_by_phone(phone: str, leads: list) -> dict:
+    """Find which lead matches this phone number"""
+    from outreach.whatsapp_sender import format_wa_number
+    if not phone:
+        return {}
+    target_fmt = format_wa_number(phone)
+    if not target_fmt:
+        return {}
+    for lead in leads:
+        lead_phones = []
+        if lead.get("phone"):
+            lead_phones.append(lead.get("phone"))
+        if lead.get("contact_whatsapp"):
+            lead_phones.append(lead.get("contact_whatsapp"))
+        if lead.get("whatsapp_phone"):
+            lead_phones.append(lead.get("whatsapp_phone"))
+        if lead.get("all_phones"):
+            if isinstance(lead.get("all_phones"), list):
+                lead_phones.extend(lead.get("all_phones"))
+            else:
+                lead_phones.append(lead.get("all_phones"))
+        
+        fb = lead.get("facebook")
+        if isinstance(fb, dict) and fb.get("phone"):
+            lead_phones.append(fb.get("phone"))
+        ig = lead.get("instagram")
+        if isinstance(ig, dict) and ig.get("phone"):
+            lead_phones.append(ig.get("phone"))
+            
+        for lp in lead_phones:
+            if format_wa_number(str(lp)) == target_fmt:
+                return lead
+    return {}
+
+
+def find_phone_by_lead_name(name: str) -> str:
+    """Find WhatsApp/phone number for a lead by business name"""
+    enriched_file = "results/leads/enriched_leads.json"
+    if not os.path.exists(enriched_file):
+        return None
+    try:
+        with open(enriched_file, "r", encoding="utf-8") as f:
+            leads = json.load(f)
+        for l in leads:
+            if l.get("name", "").lower().strip() == name.lower().strip():
+                return l.get("contact_whatsapp") or l.get("phone")
+    except Exception:
+        pass
+    return None
+
+
+def get_recent_outreach_numbers() -> list:
+    """Get unique phone numbers recently contacted via WhatsApp from log file"""
+    path = "results/logs/whatsapp_log.json"
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        messages = data.get("messages", [])
+        seen = set()
+        recent = []
+        for m in reversed(messages):
+            business = m.get("business")
+            number = m.get("number")
+            if business and number and number not in seen:
+                seen.add(number)
+                recent.append((business, number))
+                if len(recent) >= 100:
+                    break
+        return recent
+    except Exception as e:
+        print(f"   ⚠️ Error loading WhatsApp logs: {e}")
+        return []
+
+
+async def extract_messages_from_chat(page, contact_name: str, phone_num: str = None) -> list:
+    """Extract consecutive incoming messages from the end of the chat window"""
+    import hashlib
+    import asyncio
+    from outreach.whatsapp_sender import format_wa_number
+
+    # Wait up to 5 seconds for message bubbles to render
+    bubbles = []
+    for _ in range(10):
+        bubbles = await page.query_selector_all('div.message-in, div.message-out')
+        if bubbles:
+            break
+        await asyncio.sleep(0.5)
+
+    if not bubbles:
+        return []
+
+    consecutive_incoming = []
+    for bubble in reversed(bubbles):
+        class_attr = await bubble.get_attribute("class") or ""
+        if "message-in" in class_attr:
+            consecutive_incoming.append(bubble)
+        else:
+            # We reached an outgoing message, stop collecting
+            break
+
+    if not consecutive_incoming:
+        return []
+
+    consecutive_incoming.reverse()
+
+    # Extract text from the consecutive incoming bubbles
+    text_parts = []
+    for bubble in consecutive_incoming:
+        text_el = await bubble.query_selector('span.selectable-text, div.copyable-text')
+        if text_el:
+            txt = await text_el.inner_text()
+            if txt:
+                text_parts.append(txt.strip())
+
+    if not text_parts:
+        return []
+
+    reply_text = "\n".join(text_parts)
+    print(f"   📩 Found WhatsApp reply from {contact_name}: \"{reply_text[:100]}...\"")
+
+    # Determine unique message ID using a hash of the text
+    text_hash = hashlib.md5(reply_text.encode('utf-8')).hexdigest()[:12]
+    message_id = f"wa_{contact_name.replace(' ', '_')}_{text_hash}"
+
+    # Determine from_email representation (store the phone number or fallback to contact name)
+    if not phone_num:
+        raw_phone = find_phone_by_lead_name(contact_name)
+        if raw_phone:
+            phone_num = format_wa_number(raw_phone)
+            
+    from_email = phone_num if phone_num else contact_name
+
+    return [{
+        "message_id": message_id,
+        "from_email": from_email,
+        "from_name": contact_name,
+        "subject": "WhatsApp Message",
+        "body": reply_text,
+        "date": datetime.now().isoformat(),
+        "channel": "whatsapp"
+    }]
+
+
+async def async_fetch_whatsapp_replies() -> list:
+    """Fetch unread WhatsApp replies using Playwright"""
+    from playwright.async_api import async_playwright
+    from outreach.whatsapp_sender import ensure_wa_session, human_pause, format_wa_number
+
+    replies = []
+    user_data_dir = os.path.join(os.getcwd(), ".wa_session")
+    os.makedirs(user_data_dir, exist_ok=True)
+
+    print("   📱 Launching browser to scan WhatsApp replies...")
+    async with async_playwright() as p:
+        try:
+            context = await p.chromium.launch_persistent_context(
+                user_data_dir=user_data_dir,
+                headless=False,
+                channel="chrome",
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--start-maximized",
+                ],
+                no_viewport=True,
+            )
+        except Exception as e:
+            print(f"   ⚠️ Could not launch Chrome channel: {e}. Falling back to default Chromium.")
+            context = await p.chromium.launch_persistent_context(
+                user_data_dir=user_data_dir,
+                headless=False,
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--start-maximized",
+                ],
+                viewport={"width": 1366, "height": 768},
+            )
+
+        page = context.pages[0] if context.pages else await context.new_page()
+
+        session_ok = await ensure_wa_session(page)
+        if not session_ok:
+            print("   ❌ WhatsApp Web session failed")
+            await context.close()
+            return []
+
+        await human_pause(3.0, 5.0)
+
+        # 1. Scan sidebar for unread chats
+        print("   🔍 Scanning chat list for unread messages...")
+        chat_items = await page.query_selector_all('div[data-testid="chat-list-item"]')
+        chats_to_check = []
+        for item in chat_items:
+            unread_badge = await item.query_selector('span[aria-label*="unread"], span[aria-label*="Unread"], [data-testid="icon-unread-count"]')
+            title_el = await item.query_selector('span[title], div[dir="auto"]')
+            title = await title_el.get_attribute("title") if title_el else None
+            if not title and title_el:
+                title = await title_el.text_content()
+            if title:
+                title = title.strip()
+            
+            if unread_badge and title:
+                chats_to_check.append((item, title))
+
+        print(f"   🔥 Found {len(chats_to_check)} unread chats in sidebar")
+
+        # Click each unread chat and extract messages
+        for item, title in chats_to_check:
+            try:
+                print(f"   👉 Opening unread chat: {title}")
+                await item.click()
+                await human_pause(2.5, 4.0)
+
+                chat_replies = await extract_messages_from_chat(page, title)
+                if chat_replies:
+                    replies.extend(chat_replies)
+            except Exception as e:
+                print(f"   ⚠️ Error checking unread chat '{title}': {e}")
+
+        # 2. Safety check: Check the last 15 active outreach chats from logs
+        recent_contacts = get_recent_outreach_numbers()
+        print(f"   🔄 Safety Check: Checking {len(recent_contacts)} recent outreach chats...")
+        for business, number in recent_contacts:
+            # Skip if we already got a reply for this business in this run
+            if any(r["from_name"] == business for r in replies):
+                continue
+
+            formatted_num = format_wa_number(number)
+            if not formatted_num:
+                continue
+
+            try:
+                clean_num = formatted_num.replace('+', '')
+                chat_url = f"https://web.whatsapp.com/send?phone={clean_num}"
+                print(f"   🔍 Inspecting chat for {business} ({formatted_num})...")
+                await page.goto(chat_url, timeout=20000, wait_until="domcontentloaded")
+                await human_pause(4.0, 6.0)
+
+                chat_replies = await extract_messages_from_chat(page, business, phone_num=formatted_num)
+                if chat_replies:
+                    replies.extend(chat_replies)
+            except Exception as e:
+                print(f"   ⚠️ Safety check failed for {business}: {e}")
+
+        await context.close()
+
+    return replies
+
+
+def fetch_whatsapp_replies() -> list:
+    """Synchronous wrapper to run async Playwright fetcher"""
+    print("\n💬 Checking WhatsApp for replies...")
+    try:
+        return asyncio.run(async_fetch_whatsapp_replies())
+    except Exception as e:
+        print(f"   ❌ WhatsApp fetch failed: {e}")
+        return []
+
+
+async def async_send_whatsapp_replies(ready_replies: list) -> list:
+    """Send approved WhatsApp replies using Playwright"""
+    from playwright.async_api import async_playwright
+    from outreach.whatsapp_sender import ensure_wa_session, send_whatsapp_message, format_wa_number, human_pause
+
+    user_data_dir = os.path.join(os.getcwd(), ".wa_session")
+    os.makedirs(user_data_dir, exist_ok=True)
+
+    print(f"   🚀 Launching browser to send {len(ready_replies)} WhatsApp replies...")
+    async with async_playwright() as p:
+        try:
+            context = await p.chromium.launch_persistent_context(
+                user_data_dir=user_data_dir,
+                headless=False,
+                channel="chrome",
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--start-maximized",
+                ],
+                no_viewport=True,
+            )
+        except Exception as e:
+            print(f"   ⚠️ Could not launch Chrome channel: {e}. Falling back to default Chromium.")
+            context = await p.chromium.launch_persistent_context(
+                user_data_dir=user_data_dir,
+                headless=False,
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--start-maximized",
+                ],
+                viewport={"width": 1366, "height": 768},
+            )
+
+        page = context.pages[0] if context.pages else await context.new_page()
+
+        session_ok = await ensure_wa_session(page)
+        if not session_ok:
+            print("   ❌ WhatsApp Web session failed")
+            await context.close()
+            return ready_replies
+
+        await human_pause(3.0, 5.0)
+
+        for reply in ready_replies:
+            drafted = reply["drafted_reply"]
+            to_phone = reply["from_email"]
+            business = reply["business"]
+            body = drafted.get("body", "")
+
+            if not body or not to_phone:
+                continue
+
+            print(f"\n   📤 Replying via WhatsApp to: {business} ({to_phone})")
+
+            send_result = await send_whatsapp_message(
+                page=page,
+                number=to_phone,
+                message=body,
+                business_name=business
+            )
+
+            if send_result["success"]:
+                reply["action_taken"] = "replied"
+                reply["reply_sent_at"] = datetime.now().isoformat()
+                reply["status"] = "replied"
+                print(f"   ✅ Reply sent via WhatsApp")
+
+                log_wa_reply_sent(business, to_phone, body)
+            else:
+                reply["action_taken"] = "failed"
+                reply["error"] = send_result.get("error", "unknown error")
+                print(f"   ❌ WhatsApp send failed: {reply['error']}")
+
+        await context.close()
+
+    return ready_replies
+
+
+def log_wa_reply_sent(business: str, number: str, message: str):
+    """Log a sent WhatsApp reply to whatsapp_log.json"""
+    from outreach.whatsapp_sender import format_wa_number
+    log_path = "results/logs/whatsapp_log.json"
+    log = {"messages": [], "stats": {"sent": 0, "failed": 0, "skipped": 0}}
+    if os.path.exists(log_path):
+        try:
+            with open(log_path, "r", encoding="utf-8") as f:
+                log = json.load(f)
+        except Exception:
+            pass
+
+    formatted = format_wa_number(number) or number
+    log_entry = {
+        "business": business,
+        "number": formatted,
+        "msg_key": "wa_reply",
+        "message_preview": message[:100],
+        "message": message,
+        "date": datetime.now().isoformat(),
+        "success": True,
+        "error": None
+    }
+    log["messages"].append(log_entry)
+    log["stats"]["sent"] = log["stats"].get("sent", 0) + 1
+
+    with open(log_path, "w", encoding="utf-8") as f:
+        json.dump(log, f, indent=2, ensure_ascii=False)
 
 
 if __name__ == "__main__":

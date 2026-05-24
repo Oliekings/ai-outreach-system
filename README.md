@@ -8,26 +8,39 @@ The system is organized into a **5-Layer Modular Architecture** for intelligence
 
 ### 1. Intelligence
 - **Lead Finder**: Scrapes Google Maps for specific niches in target cities, avoiding duplicates.
+- **Dynamic Backlog Backpressure**: Automatically calculates a dynamic backlog threshold (e.g. double the daily target, minimum 30 leads) based on configurable period limits (`morning_leads_limit`, `afternoon_leads_limit`, `evening_leads_limit`). Skips lead discovery if the active backlog is too large.
 - **Lead Enricher**: Deep search and contact extraction using a smart fallback chain (Google -> SerpAPI -> DuckDuckGo -> Bing).
+- **Contact Filtering**: Automatically filters out uncontactable leads (no email AND no phone/WhatsApp) from `leads.json` to keep outreach pipelines hyper-efficient.
 - **Auditors**: Deep audits of websites, Google Business Profiles, and SEO to uncover pain points.
 - **Email Verifier**: Technical validation of emails via MX and SMTP.
 
 ### 2. Outreach
 - **Message Writer**: Generates personalized, high-converting sequences for Email, WhatsApp, Instagram, and Facebook using Anthropic Claude (with Groq/Llama fallback).
 - **Senders**: Multi-channel sending scripts for Email, WhatsApp, Instagram, and Facebook.
+- **Sequence Safety & Safeguards**:
+  - Automatically avoids sending sequence messages if a later step in the campaign sequence has already been executed.
+  - Multi-recipient safeguards halt duplicate email outreach to secondary addresses once a successful delivery is made.
 - **Sample Site Builder**: Builds personalized landing pages for leads.
 
 ### 3. Response Management
-- **Reply Monitor**: Watches inboxes for incoming leads.
-- **Reply Handler**: AI-driven reply drafting and nurture management, classifying intents (interested, questions, not interested).
+- **Reply Monitor**: Watches inboxes for incoming leads. Includes **automated WhatsApp unread chat scanning** via Playwright.
+- **WhatsApp Safety Checker**: Automatically crawls the last 15 active WhatsApp outreach contacts during each scan to capture any replies that didn't trigger unread badges.
+- **Reply Handler**: AI-driven reply drafting and nurture management, classifying intents (interested, questions, not interested). Includes a `--auto-approve` command line interface.
+- **Automated Reply Dispatch**: Sends approved, drafted response management replies directly back to WhatsApp contacts.
+- **Auditable Logging**: Records WhatsApp outreach and replies in dedicated logs (`results/logs/whatsapp_log.json`).
 
 ### 4. AI CEO
 - Autonomous decision engine that manages the whole pipeline.
 - Builds daily schedules based on pipeline health, API limits, and previous outcomes.
-- Automatically audits performance and triggers downstream tasks.
+- **High-Frequency Quick Check Cycle**: Triggers a swift sweep every 15 minutes during business hours to fetch/send replies, auto-approve pending reviews, and handle nurturing.
+- **Single-Instance Locking**: Guarantees sole execution using a socket lock (port `5056`).
+- **Active Operations Window**: Operates only on configured days/hours (`send_days`, `send_hours`), sleeping in high-efficiency standby mode on weekends and off-hours.
+- **File-Driven Autonomous Fallback**: Monitors file modification times for pending sequences and reply drafts; if they sit longer than `review_deadline_hours` (e.g. 12 hours), the AI CEO autonomously approves and dispatches them.
+- **Owner Limit Protection**: Respects the `lock_manual_limits` configuration (defaults to `true`) preventing automated overrides of the owner's manual daily email and WhatsApp limits.
 
 ### 5. Scale
 - Niche and city management to scale outreach across regions effectively.
+- **Strategy Safety**: Preserves locked manual limits when migrating to new cities or recommending optimized limits.
 
 ---
 

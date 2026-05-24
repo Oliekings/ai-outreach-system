@@ -43,12 +43,29 @@ def save_ig_log(log: dict):
 
 
 def already_sent_ig(log: dict, profile_url: str, business: str, msg_key: str) -> bool:
+    try:
+        curr_idx = int(msg_key.split("_")[1])
+    except:
+        curr_idx = 0
+
     for entry in log["messages"]:
-        if (entry.get("profile") == profile_url and
-                entry.get("business") == business and
-                entry.get("msg_key") == msg_key):
+        entry_business = entry.get("business") or ""
+        entry_msg_key = entry.get("msg_key") or ""
+        try:
+            entry_idx = int(entry_msg_key.split("_")[1])
+        except:
+            entry_idx = 0
+
+        if (entry_business.lower().strip() == business.lower().strip() and
+                entry_idx >= curr_idx and
+                entry.get("success")):
+            return True
+            
+        # Also check profile URL if matching specific profile/page target
+        if entry.get("profile") == profile_url and entry.get("success") and entry_idx >= curr_idx:
             return True
     return False
+
 
 
 def get_todays_ig_count(log: dict) -> int:

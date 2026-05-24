@@ -6,7 +6,20 @@ import random
 import time
 from datetime import datetime, timedelta
 from playwright.async_api import async_playwright
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    import sys
+    print("=" * 80)
+    print("❌ IMPORT ERROR: 'python-dotenv' package is missing or conflicted.")
+    print("This usually happens when running the script using the global Python interpreter")
+    print("instead of the project's virtual environment.")
+    print("\n👉 Please run the script using the virtual environment:")
+    print("   venv\\Scripts\\python.exe outreach\\whatsapp_sender.py " + " ".join(sys.argv[1:]))
+    print("\nOr activate the virtual environment first, or install requirements:")
+    print("   pip install python-dotenv")
+    print("=" * 80)
+    sys.exit(1)
 
 load_dotenv()
 import sys
@@ -128,12 +141,83 @@ def save_wa_log(log: dict):
 
 
 def already_sent_wa(log: dict, number: str, business: str, msg_key: str) -> bool:
+    try:
+        curr_idx = int(msg_key.split("_")[1])
+    except:
+        curr_idx = 0
+
+    number_fmt = format_wa_number(number)
+    if not number_fmt:
+        return False
+
+    # Check enriched leads to see if any lead sharing this number has responded or opted out
+    import os
+    enriched_file = "results/leads/enriched_leads.json"
+    if os.path.exists(enriched_file):
+        try:
+            with open(enriched_file, "r", encoding="utf-8") as f:
+                all_leads = json.load(f)
+            
+            replied_statuses = {"interested", "not_interested", "question", "replied", "nurturing", "nurturing/replied", "do_not_contact", "opt_out"}
+            
+            for lead in all_leads:
+                lead_status = (lead.get("status") or "").lower().strip()
+                lead_reply = (lead.get("reply_status") or "").lower().strip()
+                
+                if lead_status in replied_statuses or lead_reply in replied_statuses:
+                    # Compile all numbers for this lead
+                    lead_phones = []
+                    if lead.get("phone"):
+                        lead_phones.append(lead.get("phone"))
+                    if lead.get("contact_whatsapp"):
+                        lead_phones.append(lead.get("contact_whatsapp"))
+                    if lead.get("all_phones"):
+                        if isinstance(lead.get("all_phones"), list):
+                            lead_phones.extend(lead.get("all_phones"))
+                        else:
+                            lead_phones.append(lead.get("all_phones"))
+                    
+                    for lp in lead_phones:
+                        if format_wa_number(str(lp)) == number_fmt:
+                            print(f"   [Safety Block] Skipping number {number_fmt} — shared by lead '{lead.get('name')}' with active status '{lead_status or lead_reply}'")
+                            return True
+        except Exception as e:
+            print(f"   [debug] Error checking replies in enriched leads: {e}")
+
+    # Check all entries in the log
     for entry in log["messages"]:
-        if (entry.get("number") == number and
-                entry.get("business") == business and
-                entry.get("msg_key") == msg_key):
-            return True
+        entry_business = entry.get("business") or ""
+        entry_msg_key = entry.get("msg_key") or ""
+        entry_num = entry.get("number") or ""
+        entry_num_fmt = format_wa_number(entry_num)
+        
+        if entry_num_fmt != number_fmt:
+            continue
+            
+        # Global Cross-Business Deduplication:
+        # If this number has had a successful delivery or is not on WhatsApp for a DIFFERENT business,
+        # we NEVER contact this number again for another business to avoid spamming.
+        if entry_business.lower().strip() != business.lower().strip():
+            if entry.get("success"):
+                return True
+            if entry.get("error") == "Phone number not on WhatsApp":
+                return True
+            continue
+
+        # Same Business: index-aware check to allow sequential follow-ups (e.g. wa_1 -> wa_2)
+        try:
+            entry_idx = int(entry_msg_key.split("_")[1])
+        except:
+            entry_idx = 0
+        
+        if entry_idx >= curr_idx:
+            if entry.get("success"):
+                return True
+            if entry.get("error") == "Phone number not on WhatsApp":
+                return True
     return False
+
+
 
 
 def get_todays_wa_count(log: dict) -> int:
@@ -489,21 +573,96 @@ def get_next_wa_message(lead_name: str, log: dict, force: bool = False) -> tuple
         if not msg_data.get("message"):
             continue
 
-        number = msg_data.get("to", "")
-        if not number:
+        # Load lead data to check all numbers
+        lead_data = {}
+        enriched_file = "results/leads/enriched_leads.json"
+        if os.path.exists(enriched_file):
+            try:
+                with open(enriched_file, "r", encoding="utf-8") as f:
+                    all_leads = json.load(f)
+                for l in all_leads:
+                    if l.get("name") == lead_name:
+                        lead_data = l
+                        break
+            except Exception:
+                pass
+
+        # Compile all associated numbers for this lead
+        _raw = []
+        _msg_to = msg_data.get("to")
+        if isinstance(_msg_to, list):
+            _raw.extend(_msg_to)
+        elif _msg_to:
+            _raw.append(_msg_to)
+        
+        _all_phones = lead_data.get("all_phones") or []
+        if isinstance(_all_phones, list):
+            _raw.extend(_all_phones)
+        elif _all_phones:
+            _raw.append(_all_phones)
+            
+        _lead_phone = lead_data.get("phone")
+        if _lead_phone:
+            if isinstance(_lead_phone, list):
+                _raw.extend(_lead_phone)
+            else:
+                _raw.append(_lead_phone)
+                
+        _lead_wa_phone = lead_data.get("whatsapp_phone")
+        if _lead_wa_phone:
+            if isinstance(_lead_wa_phone, list):
+                _raw.extend(_lead_wa_phone)
+            else:
+                _raw.append(_lead_wa_phone)
+                
+        if isinstance(lead_data.get("facebook"), dict):
+            _fb_phone = lead_data.get("facebook", {}).get("phone")
+            if _fb_phone:
+                _raw.append(_fb_phone)
+                
+        if isinstance(lead_data.get("instagram"), dict):
+            _ig_phone = lead_data.get("instagram", {}).get("phone")
+            if _ig_phone:
+                _raw.append(_ig_phone)
+
+        _wa_num = lead_data.get("contact_whatsapp")
+        if _wa_num:
+            _raw.append(_wa_num)
+
+        # Deduplicate and check if any numbers are not yet tried/sent
+        _seen_nums = set()
+        numbers_to_try = []
+        for _n in _raw:
+            if not _n:
+                continue
+            _fmt = format_wa_number(str(_n))
+            if _fmt and _fmt not in _seen_nums:
+                _seen_nums.add(_fmt)
+                numbers_to_try.append(_fmt)
+        
+        if not numbers_to_try:
+            primary_num = msg_data.get("to")
+            if primary_num:
+                _fmt = format_wa_number(str(primary_num))
+                if _fmt:
+                    numbers_to_try = [_fmt]
+
+        if not numbers_to_try:
             continue
 
-        formatted = format_wa_number(number)
-        if not formatted:
+        all_sent = all(already_sent_wa(log, num, lead_name, key) for num in numbers_to_try)
+        if all_sent:
             continue
 
-        if already_sent_wa(log, formatted, lead_name, key):
-            # Check how long ago
-            continue
+        # Check sequence file status first
+        wa_idx = int(key.split("_")[1]) - 1
+        if wa_idx < len(wa_seq_items):
+            status = wa_seq_items[wa_idx].get("status", "queued")
+            if status in ["sent", "failed_invalid_number"]:
+                continue  # Cleanly bypass if sequence indicates this step is already completed/failed
 
         # Check human approval if required
         if require_human and not force:
-            wa_idx = int(key.split("_")[1]) - 1
             if wa_idx < len(wa_seq_items):
                 status = wa_seq_items[wa_idx].get("status", "queued")
                 if status != "approved":
@@ -534,9 +693,9 @@ def get_next_wa_message(lead_name: str, log: dict, force: bool = False) -> tuple
 async def send_all_whatsapp(dry_run: bool = False, force: bool = False, ignore_timing: bool = False):
     config = load_config()
     daily_limit = config["outreach"]["daily_whatsapp_limit"]
-    session_size = 2              # messages per session
-    session_wait_min = 30 * 60   # 30 minutes in seconds
-    session_wait_max = 60 * 60   # 60 minutes in seconds
+    session_size = 35 if force else 2              # messages per session
+    session_wait_min = 20 if force else 30 * 60   # 20 seconds if forcing, otherwise 30 minutes in seconds
+    session_wait_max = 40 if force else 60 * 60   # 40 seconds if forcing, otherwise 60 minutes in seconds
 
     invalid_cache = load_invalid_cache()
 
@@ -594,16 +753,93 @@ async def send_all_whatsapp(dry_run: bool = False, force: bool = False, ignore_t
             number = lead.get("contact_whatsapp") or (lead.get("all_phones") or [None])[0]
             if not number:
                 continue
+            
             msg_key, msg_data = get_next_wa_message(name, log, force=force)
             if msg_key in [None, "complete", "too_soon", "skipped_awaiting_approval"]:
                 print(f"[{i}] {name} — {msg_key or 'no message'} ({msg_data or ''})")
                 continue
-            formatted = format_wa_number(number)
+
+            # Build full deduplicated number list
+            _seen_nums = set()
+            numbers_to_try = []
+            _raw = []
+            _msg_to = msg_data.get("to")
+            if isinstance(_msg_to, list):
+                _raw.extend(_msg_to)
+            elif _msg_to:
+                _raw.append(_msg_to)
+            
+            # Associated phones from lead
+            _all_phones = lead.get("all_phones") or []
+            if isinstance(_all_phones, list):
+                _raw.extend(_all_phones)
+            elif _all_phones:
+                _raw.append(_all_phones)
+            
+            # Check lead.get("phone")
+            _lead_phone = lead.get("phone")
+            if _lead_phone:
+                if isinstance(_lead_phone, list):
+                    _raw.extend(_lead_phone)
+                else:
+                    _raw.append(_lead_phone)
+            
+            # Check lead.get("whatsapp_phone")
+            _lead_wa_phone = lead.get("whatsapp_phone")
+            if _lead_wa_phone:
+                if isinstance(_lead_wa_phone, list):
+                    _raw.extend(_lead_wa_phone)
+                else:
+                    _raw.append(_lead_wa_phone)
+            
+            # Check lead.get("facebook", {}).get("phone")
+            if isinstance(lead.get("facebook"), dict):
+                _fb_phone = lead.get("facebook", {}).get("phone")
+                if _fb_phone:
+                    _raw.append(_fb_phone)
+            
+            # Check lead.get("instagram", {}).get("phone")
+            if isinstance(lead.get("instagram"), dict):
+                _ig_phone = lead.get("instagram", {}).get("phone")
+                if _ig_phone:
+                    _raw.append(_ig_phone)
+
+            _wa_num = lead.get("contact_whatsapp")
+            if _wa_num:
+                _raw.append(_wa_num)
+            
+            for _n in _raw:
+                if not _n:
+                    continue
+                _fmt = format_wa_number(str(_n))
+                if _fmt and _fmt not in _seen_nums:
+                    _seen_nums.add(_fmt)
+                    numbers_to_try.append(_n)
+            if not numbers_to_try:
+                numbers_to_try = [number]
+
+            # Filter out numbers that already received this message key
+            final_numbers_to_try = []
+            for num in numbers_to_try:
+                formatted = format_wa_number(str(num))
+                if formatted and not already_sent_wa(log, formatted, name, msg_key):
+                    final_numbers_to_try.append(num)
+
             from outreach.message_writer import clean_message_content
             message = clean_message_content(msg_data.get("message", ""), default_option=3)
+            
             print(f"[{i}] {name}")
-            print(f"     To: {formatted}")
             print(f"     Key: {msg_key}")
+            if final_numbers_to_try:
+                print(f"     To (Pending): {', '.join(format_wa_number(str(n)) for n in final_numbers_to_try)}")
+            else:
+                print(f"     To: (Already sent to all active numbers)")
+            
+            # Print already contacted numbers for reference
+            already_contacted = [format_wa_number(str(n)) for n in numbers_to_try if format_wa_number(str(n)) not in [format_wa_number(str(fn)) for fn in final_numbers_to_try]]
+            if already_contacted:
+                print(f"     Already Contacted: {', '.join(already_contacted)}")
+                
             print(f"     Message: {message[:100]}...")
             print()
         return
@@ -719,14 +955,46 @@ async def send_all_whatsapp(dry_run: bool = False, force: bool = False, ignore_t
                     _raw.extend(_msg_to)
                 elif _msg_to:
                     _raw.append(_msg_to)
+                
+                # Associated phones from lead
                 _all_phones = lead.get("all_phones") or []
                 if isinstance(_all_phones, list):
                     _raw.extend(_all_phones)
                 elif _all_phones:
                     _raw.append(_all_phones)
+                
+                # Check lead.get("phone")
+                _lead_phone = lead.get("phone")
+                if _lead_phone:
+                    if isinstance(_lead_phone, list):
+                        _raw.extend(_lead_phone)
+                    else:
+                        _raw.append(_lead_phone)
+                
+                # Check lead.get("whatsapp_phone")
+                _lead_wa_phone = lead.get("whatsapp_phone")
+                if _lead_wa_phone:
+                    if isinstance(_lead_wa_phone, list):
+                        _raw.extend(_lead_wa_phone)
+                    else:
+                        _raw.append(_lead_wa_phone)
+                
+                # Check lead.get("facebook", {}).get("phone")
+                if isinstance(lead.get("facebook"), dict):
+                    _fb_phone = lead.get("facebook", {}).get("phone")
+                    if _fb_phone:
+                        _raw.append(_fb_phone)
+                
+                # Check lead.get("instagram", {}).get("phone")
+                if isinstance(lead.get("instagram"), dict):
+                    _ig_phone = lead.get("instagram", {}).get("phone")
+                    if _ig_phone:
+                        _raw.append(_ig_phone)
+
                 _wa_num = lead.get("contact_whatsapp")
                 if _wa_num:
                     _raw.append(_wa_num)
+                
                 for _n in _raw:
                     if not _n:
                         continue
@@ -747,6 +1015,7 @@ async def send_all_whatsapp(dry_run: bool = False, force: bool = False, ignore_t
                 print(f"   📋 Numbers to try: {len(final_numbers_to_try)} (out of {len(numbers_to_try)} total)")
                 sent_successfully = False
                 invalid_count = 0
+                skipped_invalid_count = 0
                 last_send_result = None
                 sends_attempted = 0
 
@@ -758,6 +1027,7 @@ async def send_all_whatsapp(dry_run: bool = False, force: bool = False, ignore_t
                     skip, skip_reason = should_skip_number(num, invalid_cache)
                     if skip:
                         print(f"   ⏭️  Skipping {num}: {skip_reason}")
+                        skipped_invalid_count += 1
                         continue
                     
                     # Human-like delay between numbers of the same business
@@ -790,6 +1060,10 @@ async def send_all_whatsapp(dry_run: bool = False, force: bool = False, ignore_t
                     if send_result["success"]:
                         sent_successfully = True
                         print(f"   ✅ Sent successfully to {formatted}")
+                        # Increment stats/session counts for each successful message sent to a number
+                        stats["sent"] += 1
+                        sent_this_session += 1
+                        log["stats"]["sent"] = log["stats"].get("sent", 0) + 1
                     else:
                         if send_result.get("error") == "Phone number not on WhatsApp":
                             invalid_count += 1
@@ -800,11 +1074,16 @@ async def send_all_whatsapp(dry_run: bool = False, force: bool = False, ignore_t
                         else:
                             print(f"   ↪️  Failed ({send_result.get('error', '?')}) — trying next number...")
 
-                if sends_attempted > 0:
+                if len(final_numbers_to_try) == 0:
+                    # final_numbers_to_try was empty (already sent to all numbers)
+                    print(f"   ℹ️ Already sent to all active numbers for {name}")
+                    # Update status to sent since it is fully complete
+                    sent_successfully = True
+                else:
+                    total_invalid = skipped_invalid_count + invalid_count
+                    all_invalid = (total_invalid == len(final_numbers_to_try))
+                    
                     if sent_successfully:
-                        stats["sent"] += 1
-                        sent_this_session += 1
-                        log["stats"]["sent"] = log["stats"].get("sent", 0) + 1
                         try:
                             safe_name = name.replace(" ", "_").replace("/", "_").replace("&", "and")
                             seq_path = f"results/messages/sequences/{safe_name}_sequence.json"
@@ -839,49 +1118,44 @@ async def send_all_whatsapp(dry_run: bool = False, force: bool = False, ignore_t
                                     json.dump(master_seq, f, indent=2, ensure_ascii=False)
                         except Exception as e:
                             print(f"   ⚠️  Failed to update sequence status: {e}")
+                    elif all_invalid:
+                        print(f"   ⚠️  All {len(final_numbers_to_try)} number(s) invalid or not on WhatsApp. Marking as 'failed_invalid_number'.")
+                        stats["failed"] += 1
+                        log["stats"]["failed"] = log["stats"].get("failed", 0) + 1
+                        try:
+                            safe_name = name.replace(" ", "_").replace("/", "_").replace("&", "and")
+                            seq_path = f"results/messages/sequences/{safe_name}_sequence.json"
+                            if os.path.exists(seq_path):
+                                with open(seq_path, "r", encoding="utf-8") as f:
+                                    seq_data = json.load(f)
+                                for m in seq_data:
+                                    if m.get("channel") == "whatsapp" and m.get("status") != "sent":
+                                        m["status"] = "failed_invalid_number"
+                                with open(seq_path, "w", encoding="utf-8") as f:
+                                    json.dump(seq_data, f, indent=2, ensure_ascii=False)
+                            master_seq_path = "results/messages/sequences/master_sequence.json"
+                            if os.path.exists(master_seq_path):
+                                with open(master_seq_path, "r", encoding="utf-8") as f:
+                                    master_seq = json.load(f)
+                                for lead_seq in master_seq:
+                                    if lead_seq.get("lead") == name:
+                                        for m in lead_seq.get("sequence", []):
+                                            if m.get("channel") == "whatsapp" and m.get("status") != "sent":
+                                                m["status"] = "failed_invalid_number"
+                                with open(master_seq_path, "w", encoding="utf-8") as f:
+                                    json.dump(master_seq, f, indent=2, ensure_ascii=False)
+                        except Exception as e:
+                            print(f"   ⚠️  Failed to update sequence status: {e}")
                     else:
                         stats["failed"] += 1
                         log["stats"]["failed"] = log["stats"].get("failed", 0) + 1
-                        all_invalid = (invalid_count == len(final_numbers_to_try))
-                        if all_invalid:
-                            print(f"   ⚠️  All {len(final_numbers_to_try)} number(s) not on WhatsApp. Marking as 'failed_invalid_number'.")
-                            try:
-                                safe_name = name.replace(" ", "_").replace("/", "_").replace("&", "and")
-                                seq_path = f"results/messages/sequences/{safe_name}_sequence.json"
-                                if os.path.exists(seq_path):
-                                    with open(seq_path, "r", encoding="utf-8") as f:
-                                        seq_data = json.load(f)
-                                    for m in seq_data:
-                                        if m.get("channel") == "whatsapp" and m.get("status") != "sent":
-                                            m["status"] = "failed_invalid_number"
-                                    with open(seq_path, "w", encoding="utf-8") as f:
-                                        json.dump(seq_data, f, indent=2, ensure_ascii=False)
-                                master_seq_path = "results/messages/sequences/master_sequence.json"
-                                if os.path.exists(master_seq_path):
-                                    with open(master_seq_path, "r", encoding="utf-8") as f:
-                                        master_seq = json.load(f)
-                                    for lead_seq in master_seq:
-                                        if lead_seq.get("lead") == name:
-                                            for m in lead_seq.get("sequence", []):
-                                                if m.get("channel") == "whatsapp" and m.get("status") != "sent":
-                                                    m["status"] = "failed_invalid_number"
-                                    with open(master_seq_path, "w", encoding="utf-8") as f:
-                                        json.dump(master_seq, f, indent=2, ensure_ascii=False)
-                            except Exception as e:
-                                print(f"   ⚠️  Failed to update sequence status: {e}")
-                        else:
-                            _last_err = (last_send_result or {}).get("error", "unknown error")
-                            print(f"   ❌ All numbers failed. Last error: {_last_err}")
-                else:
-                    # final_numbers_to_try was empty (already sent to all numbers)
-                    print(f"   ℹ️ Already sent to all active numbers for {name}")
-                    # Update status to sent since it is fully complete
-                    sent_successfully = True
+                        _last_err = (last_send_result or {}).get("error", "unknown error")
+                        print(f"   ❌ All numbers failed. Last error: {_last_err}")
 
                 save_wa_log(log)
 
-                # Short gap within session
-                if sent_this_session < this_session and lead_index < len(leads_with_wa):
+                # Short gap within session — only when a message was actually sent
+                if sent_successfully and sends_attempted > 0 and sent_this_session < this_session and lead_index < len(leads_with_wa):
                     gap = random.uniform(20, 60)
                     print(f"   ⏳ {gap:.0f}s before next in session...")
                     await asyncio.sleep(gap)
