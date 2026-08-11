@@ -13,7 +13,10 @@ import pathlib
 
 sys.stdout.reconfigure(encoding='utf-8')
 
+
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+from response_management.shared import load_reply_log, save_reply_log
+
 from utils.ai_client import ai_response as get_ai_response, safe_json
 
 load_dotenv()
@@ -66,27 +69,6 @@ def load_config() -> dict:
 
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # REPLY LOG
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-def load_reply_log() -> dict:
-    path = "results/replies/reply_log.json"
-    if os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {
-        "replies": [],
-        "stats": {
-            "interested": 0,
-            "not_interested": 0,
-            "question": 0,
-            "out_of_office": 0,
-            "total": 0
-        }
-    }
-
-
-def save_reply_log(log: dict):
-    with open("results/replies/reply_log.json", "w", encoding="utf-8") as f:
-        json.dump(log, f, indent=2, ensure_ascii=False)
 
 
 def already_processed(log: dict, message_id: str) -> bool:

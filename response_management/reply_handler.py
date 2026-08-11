@@ -2,11 +2,14 @@ import json
 import os
 import re
 from datetime import datetime
+
 from dotenv import load_dotenv
 import sys
 import pathlib
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+from response_management.shared import load_reply_log, save_reply_log
+
 from utils.ai_client import ai_response as get_ai_response
 
 load_dotenv()
@@ -19,18 +22,6 @@ def load_config() -> dict:
     with open("ceo_config.json", "r", encoding="utf-8") as f:
         return json.load(f)
 
-
-def load_reply_log() -> dict:
-    path = "results/replies/reply_log.json"
-    if os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {"replies": [], "stats": {}}
-
-
-def save_reply_log(log: dict):
-    with open("results/replies/reply_log.json", "w", encoding="utf-8") as f:
-        json.dump(log, f, indent=2, ensure_ascii=False)
 
 
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
