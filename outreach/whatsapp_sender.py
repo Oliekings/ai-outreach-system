@@ -3,7 +3,6 @@ import json
 import os
 import re
 import random
-import time
 from datetime import datetime, timedelta
 from playwright.async_api import async_playwright
 try:
