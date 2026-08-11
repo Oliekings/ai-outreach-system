@@ -379,11 +379,8 @@ def format_wa_number(number: str) -> str:
     return "+" + clean if clean else None
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 from utils.browser import human_pause, human_type, handle_consent
 
-
-# ─────────────────────────────────────────────────────────────────────────────
 # WHATSAPP WEB SESSION MANAGER
 # ─────────────────────────────────────────────────────────────────────────────
 async def ensure_wa_session(page) -> bool:
@@ -448,6 +445,126 @@ async def ensure_wa_session(page) -> bool:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# SEND SINGLE WHATSAPP MESSAGE HELPER FUNCTIONS
+# ─────────────────────────────────────────────────────────────────────────────
+async def _wait_for_message_box(page):
+    """Waits for and returns the message input box if found, else None."""
+    input_selectors = [
+        'div[aria-label="Type a message"]',
+        'div[data-tab="10"]',
+        'div[contenteditable="true"][data-tab="10"]',
+        'footer div[contenteditable="true"]',
+    ]
+    for selector in input_selectors:
+        try:
+            await page.wait_for_selector(selector, timeout=10000)
+            msg_box = await page.query_selector(selector)
+            if msg_box:
+                return msg_box
+        except:
+            continue
+    return None
+
+
+async def _check_invalid_number(page) -> bool:
+    """Checks if the number is invalid/not on WhatsApp and dismisses the modal. Returns True if invalid."""
+    content = await page.content()
+    is_invalid = (
+        "isn't on WhatsApp" in content
+        or "is not on WhatsApp" in content
+        or "isn't on whatsapp" in content
+        or "is not on whatsapp" in content
+    )
+
+    if not is_invalid:
+        modal = await page.query_selector('div[data-animate-modal-popup="true"]')
+        if modal:
+            modal_text = await modal.text_content()
+            if modal_text and ("isn't" in modal_text or "not on" in modal_text):
+                is_invalid = True
+
+    if is_invalid:
+        print(f"   ⚠️  Detected 'number not on WhatsApp' popup.")
+        for sel in [
+            'div[role="button"]:has-text("OK")',
+            'button:has-text("OK")',
+            'div[role="button"]:has-text("Ok")',
+            'button:has-text("Ok")',
+            'div[data-animate-modal-popup="true"] button',
+        ]:
+            try:
+                ok_btn = await page.query_selector(sel)
+                if ok_btn:
+                    await ok_btn.click()
+                    print("   Dismissed the invalid number modal.")
+                    await human_pause(1.0, 2.0)
+                    break
+            except:
+                continue
+        return True
+    return False
+
+
+async def _type_message(msg_box, message: str):
+    """Types the message into the message box in chunks like a human."""
+    await msg_box.click()
+    await human_pause(1.0, 2.0)
+
+    if len(message) > 500:
+        chunks = [message[i : i + 500] for i in range(0, len(message), 500)]
+    else:
+        chunks = [message]
+
+    for chunk in chunks:
+        await human_type(msg_box, chunk)
+        await human_pause(0.5, 1.0)
+
+    await human_pause(2.0, 5.0)
+
+
+async def _click_send(page, msg_box) -> bool:
+    """Clicks the send button or presses Enter. Returns True if sent."""
+    send_selectors = [
+        'button[aria-label="Send"]',
+        'span[data-icon="send"]',
+        'button[data-tab="11"]',
+    ]
+    for selector in send_selectors:
+        try:
+            send_btn = await page.query_selector(selector)
+            if send_btn:
+                await send_btn.click()
+                return True
+        except:
+            continue
+
+    try:
+        await msg_box.press("Enter")
+        return True
+    except:
+        return False
+
+
+async def _verify_sent(page) -> bool:
+    """Checks for tick marks to verify if the message was sent. Returns True if verified."""
+    for _ in range(5):
+        await asyncio.sleep(1)
+        for tick_sel in [
+            'span[data-icon="msg-check"]',
+            'span[data-icon="msg-dblcheck"]',
+            'span[aria-label=" Sent "]',
+            'span[aria-label=" Delivered "]',
+        ]:
+            try:
+                tick = await page.query_selector(tick_sel)
+                if tick:
+                    return True
+            except:
+                pass
+    return False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # SEND SINGLE WHATSAPP MESSAGE
 # ─────────────────────────────────────────────────────────────────────────────
 async def send_whatsapp_message(
@@ -461,153 +578,40 @@ async def send_whatsapp_message(
     }
 
     try:
-        # Format number
         formatted = format_wa_number(number)
         if not formatted:
             result["error"] = "Invalid phone number"
             return result
 
-        # Remove + for URL
         number_clean = formatted.replace("+", "")
-
         print(f"   📤 Sending to {formatted}...")
 
-        # Navigate to direct chat URL
         chat_url = f"https://web.whatsapp.com/send?phone={number_clean}"
         await page.goto(chat_url, timeout=20000, wait_until="domcontentloaded")
         await human_pause(4.0, 7.0)
 
-        # Handle any consent popups
         await handle_consent(page)
         await human_pause(2.0, 4.0)
 
-        # Wait for message input box
-        input_selectors = [
-            'div[aria-label="Type a message"]',
-            'div[data-tab="10"]',
-            'div[contenteditable="true"][data-tab="10"]',
-            'footer div[contenteditable="true"]',
-        ]
-
-        msg_box = None
-        for selector in input_selectors:
-            try:
-                await page.wait_for_selector(selector, timeout=10000)
-                msg_box = await page.query_selector(selector)
-                if msg_box:
-                    break
-            except:
-                continue
+        msg_box = await _wait_for_message_box(page)
 
         if not msg_box:
-            # Check if number is invalid
-            content = await page.content()
-            is_invalid = (
-                "isn't on WhatsApp" in content
-                or "is not on WhatsApp" in content
-                or "isn't on whatsapp" in content
-                or "is not on whatsapp" in content
-            )
-
-            # Also fallback to modal checking
-            if not is_invalid:
-                modal = await page.query_selector(
-                    'div[data-animate-modal-popup="true"]'
-                )
-                if modal:
-                    modal_text = await modal.text_content()
-                    if modal_text and ("isn't" in modal_text or "not on" in modal_text):
-                        is_invalid = True
-
+            is_invalid = await _check_invalid_number(page)
             if is_invalid:
                 result["error"] = "Phone number not on WhatsApp"
-                print(f"   ⚠️  Detected 'number not on WhatsApp' popup.")
-                # Try to click the OK button to dismiss it
-                for sel in [
-                    'div[role="button"]:has-text("OK")',
-                    'button:has-text("OK")',
-                    'div[role="button"]:has-text("Ok")',
-                    'button:has-text("Ok")',
-                    'div[data-animate-modal-popup="true"] button',
-                ]:
-                    try:
-                        ok_btn = await page.query_selector(sel)
-                        if ok_btn:
-                            await ok_btn.click()
-                            print("   Dismissed the invalid number modal.")
-                            await human_pause(1.0, 2.0)
-                            break
-                    except:
-                        continue
                 return result
 
             result["error"] = "Could not find message input box"
             return result
 
-        # Click the message box
-        await msg_box.click()
-        await human_pause(1.0, 2.0)
+        await _type_message(msg_box, message)
 
-        # Type message like a human
-        # Split long messages into chunks to avoid issues
-        if len(message) > 500:
-            chunks = [message[i : i + 500] for i in range(0, len(message), 500)]
-        else:
-            chunks = [message]
-
-        for chunk in chunks:
-            await human_type(msg_box, chunk)
-            await human_pause(0.5, 1.0)
-
-        # Random pause before sending — like a human re-reading
-        await human_pause(2.0, 5.0)
-
-        # Send the message
-        send_selectors = [
-            'button[aria-label="Send"]',
-            'span[data-icon="send"]',
-            'button[data-tab="11"]',
-        ]
-
-        sent = False
-        for selector in send_selectors:
-            try:
-                send_btn = await page.query_selector(selector)
-                if send_btn:
-                    await send_btn.click()
-                    sent = True
-                    break
-            except:
-                continue
-
-        if not sent:
-            # Try Enter key
-            await msg_box.press("Enter")
-            sent = True
+        sent = await _click_send(page, msg_box)
 
         if sent:
             await human_pause(2.0, 4.0)
 
-            # Verify message was sent by checking for tick marks
-            verified = False
-            for _ in range(5):  # Check up to 5 times over ~5 seconds
-                await asyncio.sleep(1)
-                # Look for message status indicators (single tick = sent, double tick = delivered)
-                for tick_sel in [
-                    'span[data-icon="msg-check"]',  # single tick
-                    'span[data-icon="msg-dblcheck"]',  # double tick
-                    'span[aria-label=" Sent "]',
-                    'span[aria-label=" Delivered "]',
-                ]:
-                    try:
-                        tick = await page.query_selector(tick_sel)
-                        if tick:
-                            verified = True
-                            break
-                    except:
-                        pass
-                if verified:
-                    break
+            verified = await _verify_sent(page)
 
             result["success"] = True
             if verified:
