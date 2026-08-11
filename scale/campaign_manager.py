@@ -23,7 +23,7 @@ def create_campaign(
     niches: list,
     daily_lead_target: int = 10,
     duration_days: int = 30,
-    notes: str = ""
+    notes: str = "",
 ) -> dict:
     """Create a new outreach campaign"""
     try:
@@ -44,8 +44,12 @@ def create_campaign(
         rev = get_niche_revenue_estimate(niche, leads_per_niche)
         revenue_projections.append(rev)
 
-    total_projected_revenue = sum(r["one_time_revenue_ngn"] for r in revenue_projections)
-    total_projected_retainer = sum(r["monthly_retainer_ngn"] for r in revenue_projections)
+    total_projected_revenue = sum(
+        r["one_time_revenue_ngn"] for r in revenue_projections
+    )
+    total_projected_retainer = sum(
+        r["monthly_retainer_ngn"] for r in revenue_projections
+    )
 
     campaign = {
         "id": campaign_id,
@@ -55,13 +59,15 @@ def create_campaign(
         "status": "active",
         "created_at": datetime.now().isoformat(),
         "start_date": datetime.now().strftime("%Y-%m-%d"),
-        "end_date": (datetime.now() + timedelta(days=duration_days)).strftime("%Y-%m-%d"),
+        "end_date": (datetime.now() + timedelta(days=duration_days)).strftime(
+            "%Y-%m-%d"
+        ),
         "duration_days": duration_days,
         "targets": {
             "daily_leads": daily_lead_target,
             "total_leads": total_leads,
             "conversion_rate_target": 5.0,
-            "clients_target": max(1, int(total_leads * 0.05))
+            "clients_target": max(1, int(total_leads * 0.05)),
         },
         "actual": {
             "leads_found": 0,
@@ -70,16 +76,16 @@ def create_campaign(
             "replies_received": 0,
             "interested_leads": 0,
             "clients_closed": 0,
-            "revenue_ngn": 0
+            "revenue_ngn": 0,
         },
         "revenue_projections": {
             "one_time_ngn": total_projected_revenue,
             "monthly_retainer_ngn": total_projected_retainer,
             "annual_ngn": total_projected_revenue + (total_projected_retainer * 12),
-            "by_niche": revenue_projections
+            "by_niche": revenue_projections,
         },
         "city_strategy": strategy,
-        "notes": notes
+        "notes": notes,
     }
 
     # Save campaign
@@ -93,7 +99,9 @@ def create_campaign(
     print(f"   Niches: {', '.join(niches)}")
     print(f"   Duration: {duration_days} days")
     print(f"   Lead target: {total_leads} total")
-    print(f"   Revenue projection: ₦{total_projected_revenue:,} one-time + ₦{total_projected_retainer:,}/mo retainer")
+    print(
+        f"   Revenue projection: ₦{total_projected_revenue:,} one-time + ₦{total_projected_retainer:,}/mo retainer"
+    )
 
     # Update ceo_config.json
     _update_config_for_campaign(campaign)
@@ -167,7 +175,9 @@ def update_campaign_actuals(campaign_id: str):
 
     campaign["actual"]["leads_found"] = len(leads)
     campaign["actual"]["leads_enriched"] = len([l for l in leads if l.get("enriched")])
-    campaign["actual"]["interested_leads"] = len([l for l in leads if l.get("status") == "interested"])
+    campaign["actual"]["interested_leads"] = len(
+        [l for l in leads if l.get("status") == "interested"]
+    )
 
     # Count messages
     total_sent = 0
@@ -175,7 +185,7 @@ def update_campaign_actuals(campaign_id: str):
         "results/logs/send_log.json",
         "results/logs/whatsapp_log.json",
         "results/logs/instagram_log.json",
-        "results/logs/facebook_log.json"
+        "results/logs/facebook_log.json",
     ]:
         if os.path.exists(log_file):
             with open(log_file, "r", encoding="utf-8") as f:
@@ -312,7 +322,7 @@ if __name__ == "__main__":
             niches=["restaurants", "salons", "pharmacies"],
             daily_lead_target=10,
             duration_days=30,
-            notes="Test campaign for system validation"
+            notes="Test campaign for system validation",
         )
 
     elif "--list" in sys.argv:
@@ -322,7 +332,9 @@ if __name__ == "__main__":
             actual = c.get("actual", {})
             print(f"  {'▶' if c['status'] == 'active' else '⏸'} {c['name']}")
             print(f"     {c['city']} | {', '.join(c['niches'])}")
-            print(f"     Leads: {actual.get('leads_found', 0)} | Sent: {actual.get('messages_sent', 0)} | Interested: {actual.get('interested_leads', 0)}")
+            print(
+                f"     Leads: {actual.get('leads_found', 0)} | Sent: {actual.get('messages_sent', 0)} | Interested: {actual.get('interested_leads', 0)}"
+            )
             print()
 
     elif "--report" in sys.argv:

@@ -25,9 +25,10 @@ import random
 from datetime import datetime
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
-sys.stdout.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding="utf-8")
 
 # Ensure project root is on path for imports
 _project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -45,18 +46,18 @@ from outreach.message_writer import (
 # CONFIGURABLE DELAYS (days)
 # ─────────────────────────────────────────────────────────────────────────────
 FOLLOWUP_DELAYS = {
-    "email_2": 4,   # days after email_1
-    "email_3": 7,   # days after email_2
-    "wa_2":    3,    # days after wa_1
-    "wa_3":    7,    # days after wa_2
+    "email_2": 4,  # days after email_1
+    "email_3": 7,  # days after email_2
+    "wa_2": 3,  # days after wa_1
+    "wa_3": 7,  # days after wa_2
 }
 
 # Which message triggers which follow-up
 FOLLOWUP_CHAIN = {
     "email_1": "email_2",
     "email_2": "email_3",
-    "wa_1":    "wa_2",
-    "wa_2":    "wa_3",
+    "wa_1": "wa_2",
+    "wa_2": "wa_3",
 }
 
 
@@ -141,19 +142,23 @@ def find_pending_followups() -> list:
                 delay = FOLLOWUP_DELAYS[next_key]
                 if days_since >= delay:
                     # Check the message file doesn't already have this follow-up
-                    safe_name = biz.replace(" ", "_").replace("/", "_").replace("&", "and")
+                    safe_name = (
+                        biz.replace(" ", "_").replace("/", "_").replace("&", "and")
+                    )
                     email_file = f"results/emails/{safe_name}_emails.json"
                     existing = load_json(email_file, {})
                     if next_key in existing and existing[next_key].get("subject"):
                         continue  # Already generated, sender will pick it up
-                    pending.append({
-                        "business": biz,
-                        "channel": "email",
-                        "last_key": last_key,
-                        "next_key": next_key,
-                        "days_since": days_since,
-                        "delay_needed": delay,
-                    })
+                    pending.append(
+                        {
+                            "business": biz,
+                            "channel": "email",
+                            "last_key": last_key,
+                            "next_key": next_key,
+                            "days_since": days_since,
+                            "delay_needed": delay,
+                        }
+                    )
 
     # --- WhatsApp follow-ups ---
     wa_sends = {}
@@ -175,19 +180,23 @@ def find_pending_followups() -> list:
                 days_since = (now - sent_date).days
                 delay = FOLLOWUP_DELAYS[next_key]
                 if days_since >= delay:
-                    safe_name = biz.replace(" ", "_").replace("/", "_").replace("&", "and")
+                    safe_name = (
+                        biz.replace(" ", "_").replace("/", "_").replace("&", "and")
+                    )
                     wa_file = f"results/messages/whatsapp/{safe_name}_whatsapp.json"
                     existing = load_json(wa_file, {})
                     if next_key in existing and existing[next_key].get("message"):
                         continue
-                    pending.append({
-                        "business": biz,
-                        "channel": "whatsapp",
-                        "last_key": last_key,
-                        "next_key": next_key,
-                        "days_since": days_since,
-                        "delay_needed": delay,
-                    })
+                    pending.append(
+                        {
+                            "business": biz,
+                            "channel": "whatsapp",
+                            "last_key": last_key,
+                            "next_key": next_key,
+                            "days_since": days_since,
+                            "delay_needed": delay,
+                        }
+                    )
 
     return pending
 
@@ -208,8 +217,10 @@ def generate_email_followup(ctx: dict, next_key: str) -> dict:
         if ctx["site_issues"]:
             issues_text = "\n".join(f"* {i}" for i in ctx["site_issues"][:4])
         elif not has_website:
-            issues_text = ("* No website found\n* No online booking\n"
-                           "* No WhatsApp button\n* Missing from directories")
+            issues_text = (
+                "* No website found\n* No online booking\n"
+                "* No WhatsApp button\n* Missing from directories"
+            )
 
         prompt = f"""
 You are writing the SECOND email to a business owner who didn't reply to the first email.
@@ -435,7 +446,9 @@ def run_followup_manager(dry_run: bool = False) -> dict:
             emails = load_json(email_file, {})
             emails[next_key] = result
             save_json(email_file, emails)
-            print(f"    [OK] Saved {next_key} — Subject: {result.get('subject', '')[:50]}")
+            print(
+                f"    [OK] Saved {next_key} — Subject: {result.get('subject', '')[:50]}"
+            )
 
         elif channel == "whatsapp":
             result = generate_whatsapp_followup(ctx, next_key)
@@ -450,7 +463,9 @@ def run_followup_manager(dry_run: bool = False) -> dict:
             wa_msgs = load_json(wa_file, {})
             wa_msgs[next_key] = result
             save_json(wa_file, wa_msgs)
-            print(f"    [OK] Saved {next_key} — Message: {result.get('message', '')[:60]}")
+            print(
+                f"    [OK] Saved {next_key} — Message: {result.get('message', '')[:60]}"
+            )
 
         stats["generated"] += 1
         time.sleep(random.uniform(2, 4))

@@ -13,51 +13,28 @@ from anthropic import Anthropic
 # Add project root to path for robust imports
 sys.path.insert(0, os.getcwd())
 
-sys.stdout.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding="utf-8")
 load_dotenv()
-
-class Symbol:
-    """Clean logging symbols that work across all terminals"""
-    USE_EMOJI = False # Set to True if your terminal supports UTF-8 emojis
-    
-    LIST = "📋" if USE_EMOJI else "[LIST]"
-    LEAD = "💎" if USE_EMOJI else "[LEAD]"
-    SEARCH = "🔍" if USE_EMOJI else "[SEARCH]"
-    STOP = "🛑" if USE_EMOJI else "[STOP]"
-    CHECK = "✅" if USE_EMOJI else "[OK]"
-    WORLD = "🌍" if USE_EMOJI else "[WORLD]"
-    WARN = "⚠️" if USE_EMOJI else "[WARN]"
-    AI = "🧠" if USE_EMOJI else "[AI]"
-    VIBE = "🎨" if USE_EMOJI else "[VIBE]"
-    TONE = "🗣️" if USE_EMOJI else "[TONE]"
-    PRIDE = "🆕" if USE_EMOJI else "[PRIDE]"
-    TARGET = "🎯" if USE_EMOJI else "[TARGET]"
-    TIME = "⏰" if USE_EMOJI else "[TIME]"
-    NURTURE = "🌱" if USE_EMOJI else "[NURTURE]"
-    REFERRAL = "🤝" if USE_EMOJI else "[REFERRAL]"
-    EMAIL = "📧" if USE_EMOJI else "[EMAIL]"
-    PHONE = "📞" if USE_EMOJI else "[PHONE]"
-    WHATSAPP = "💬" if USE_EMOJI else "[WHATSAPP]"
-    SOCIAL = "📱" if USE_EMOJI else "[SOCIAL]"
-    INSTAGRAM = "📸" if USE_EMOJI else "[INSTAGRAM]"
-    FACEBOOK = "📘" if USE_EMOJI else "[FACEBOOK]"
-    RETRY = "🔄" if USE_EMOJI else "[RETRY]"
-    BOT = "🛡️" if USE_EMOJI else "[BOT-WALL]"
-    WAIT = "⏳" if USE_EMOJI else "[WAIT]"
-    PITCH = "💡" if USE_EMOJI else "[PITCH]"
-    PAGE = "📄" if USE_EMOJI else "[PAGE]"
-    MAPS = "📍" if USE_EMOJI else "[MAPS]"
-    ERROR = "❌" if USE_EMOJI else "[ERROR]"
-    HUMAN = "🧑" if USE_EMOJI else "[USER]"
 
 # ── Bot detection keywords ──────────────────────────────────────────────────
 BOT_WALL_SIGNALS = [
-    "captcha", "cloudflare", "hcaptcha", "recaptcha",
-    "verify you are human", "access denied", "403 forbidden",
-    "please enable javascript", "checking your browser",
-    "ddos protection", "ray id", "security check",
-    "just a moment", "attention required", "enable cookies"
+    "captcha",
+    "cloudflare",
+    "hcaptcha",
+    "recaptcha",
+    "verify you are human",
+    "access denied",
+    "403 forbidden",
+    "please enable javascript",
+    "checking your browser",
+    "ddos protection",
+    "ray id",
+    "security check",
+    "just a moment",
+    "attention required",
+    "enable cookies",
 ]
+
 
 def is_bot_wall(text: str, url: str) -> bool:
     """Detect if page is showing a bot protection wall"""
@@ -92,13 +69,14 @@ async def safe_goto(page, url: str, timeout: int = 15000) -> dict:
         "blocked": False,
         "text": "",
         "html": "",
-        "source": "direct"
+        "source": "direct",
     }
 
     # Skip PDFs, CSVs and other non-HTML files
-    if any(url.lower().endswith(ext) for ext in [
-        '.pdf', '.csv', '.xlsx', '.doc', '.docx', '.zip', '.xml'
-    ]):
+    if any(
+        url.lower().endswith(ext)
+        for ext in [".pdf", ".csv", ".xlsx", ".doc", ".docx", ".zip", ".xml"]
+    ):
         print(f"      — Skipping non-HTML file: {url[-50:]}")
         result["success"] = False
         return result
@@ -114,7 +92,9 @@ async def safe_goto(page, url: str, timeout: int = 15000) -> dict:
 
         # Check for bot wall
         if is_bot_wall(text, url):
-            print(f"      {Symbol.BOT}{Symbol.WARN}  Bot wall detected — trying cache once...")
+            print(
+                f"      {Symbol.BOT}{Symbol.WARN}  Bot wall detected — trying cache once..."
+            )
             result["blocked"] = True
 
             # Try Google cache ONCE only
@@ -154,6 +134,7 @@ def load_config(path: str = "ceo_config.json") -> dict:
     except:
         return {}
 
+
 config = load_config()
 
 # ── Nigerian public holidays and events for timing intelligence ───────────────
@@ -169,39 +150,102 @@ NIGERIAN_EVENTS = {
 
 # ── Domains that are NOT official business websites ───────────────────────────
 AGGREGATOR_DOMAINS = [
-    'hotels.ng', 'chowdeck.com', 'jumia.com', 'yellowplate.ng',
-    'goto-where.com', 'wordpress.com', 'blogspot.com', 'tripadvisor.com',
-    'foursquare.com', 'zomato.com', 'waze.com', 'booking.com',
-    'facebook.com', 'instagram.com', 'twitter.com', 'tiktok.com',
-    'linkedin.com', 'google.com', 'yelp.com', 'metroaxs.com',
-    'revphy.com', 'zeperoni.com', 'zabihah.com', 'thetravelhunters.com',
-    'abujafoodtour.wordpress.com', 'restaurantfurnitureplus.com',
-    'rocketreach.co', 'ng.linkedin.com', 'aboutus.org', 'bizapedia.com',
-    'mindtrip.ai', 'placejoys.com', 'b2bhint.com',
-    'dinesurf.com', 'yellowpages.com.ng', 'nigeriangalleria.com',
-    'vconnect.com', 'businesslist.com.ng', 'whogohost.com',
-    'nairaland.com', 'ngcareers.com', 'naijagoodies.com',
-    'openrice.com', 'menupages.com', 'restaurantguru.com',
-    'allmenus.com', 'grubhub.com', 'seamless.com',
-    'directory.org.ng', 'ng.worldorgs.com', 'worldorgs.com',
-    'halalfoodle.com', 'eatup.ng', 'pencom.gov.ng',
-    'maptons.com', 'me.maptons.com', 'toasttab.com',
-    'ncc.gov.ng', 'edostate.gov.ng', 'gov.ng',
-    'viamichelin', 'michelin.net',
-    'ng.infoaboutcompanies.com', 'infoaboutcompanies.com',
-    'fidelitybank.ng', 'gtbank.com', 'zenithbank.com',
-    'accessbankplc.com', 'firstbanknigeria.com',
-    'rscn.org.jo', 'ijefm.co.in', 'budgit.org',
-    'dj.maptons.com', 'co.in', 'org.jo',
-    'mtn.ng', 'africabizinfo.com', 'researchgate.net',
-    'viamichelin-app', 'glo.com', 'airtel.com.ng',
-    '9mobile.com.ng', 'stanbicibtc.com', 'ubagroup.com',
+    "hotels.ng",
+    "chowdeck.com",
+    "jumia.com",
+    "yellowplate.ng",
+    "goto-where.com",
+    "wordpress.com",
+    "blogspot.com",
+    "tripadvisor.com",
+    "foursquare.com",
+    "zomato.com",
+    "waze.com",
+    "booking.com",
+    "facebook.com",
+    "instagram.com",
+    "twitter.com",
+    "tiktok.com",
+    "linkedin.com",
+    "google.com",
+    "yelp.com",
+    "metroaxs.com",
+    "revphy.com",
+    "zeperoni.com",
+    "zabihah.com",
+    "thetravelhunters.com",
+    "abujafoodtour.wordpress.com",
+    "restaurantfurnitureplus.com",
+    "rocketreach.co",
+    "ng.linkedin.com",
+    "aboutus.org",
+    "bizapedia.com",
+    "mindtrip.ai",
+    "placejoys.com",
+    "b2bhint.com",
+    "dinesurf.com",
+    "yellowpages.com.ng",
+    "nigeriangalleria.com",
+    "vconnect.com",
+    "businesslist.com.ng",
+    "whogohost.com",
+    "nairaland.com",
+    "ngcareers.com",
+    "naijagoodies.com",
+    "openrice.com",
+    "menupages.com",
+    "restaurantguru.com",
+    "allmenus.com",
+    "grubhub.com",
+    "seamless.com",
+    "directory.org.ng",
+    "ng.worldorgs.com",
+    "worldorgs.com",
+    "halalfoodle.com",
+    "eatup.ng",
+    "pencom.gov.ng",
+    "maptons.com",
+    "me.maptons.com",
+    "toasttab.com",
+    "ncc.gov.ng",
+    "edostate.gov.ng",
+    "gov.ng",
+    "viamichelin",
+    "michelin.net",
+    "ng.infoaboutcompanies.com",
+    "infoaboutcompanies.com",
+    "fidelitybank.ng",
+    "gtbank.com",
+    "zenithbank.com",
+    "accessbankplc.com",
+    "firstbanknigeria.com",
+    "rscn.org.jo",
+    "ijefm.co.in",
+    "budgit.org",
+    "dj.maptons.com",
+    "co.in",
+    "org.jo",
+    "mtn.ng",
+    "africabizinfo.com",
+    "researchgate.net",
+    "viamichelin-app",
+    "glo.com",
+    "airtel.com.ng",
+    "9mobile.com.ng",
+    "stanbicibtc.com",
+    "ubagroup.com",
 ]
 
 # ── Hosted site builders — real content, not custom domain ───────────────────
 HOSTED_BUILDERS = [
-    'wixsite.com', 'squarespace.com', 'webflow.io', 'weebly.com',
-    'godaddysites.com', 'site123.me', 'jimdo.com', 'strikingly.com',
+    "wixsite.com",
+    "squarespace.com",
+    "webflow.io",
+    "weebly.com",
+    "godaddysites.com",
+    "site123.me",
+    "jimdo.com",
+    "strikingly.com",
 ]
 
 
@@ -210,7 +254,9 @@ HOSTED_BUILDERS = [
 # ─────────────────────────────────────────────────────────────────────────────
 def get_ai_response(prompt: str, max_tokens: int = 800) -> str:
     from utils.ai_client import ai_response
+
     return ai_response(prompt, task="enrich", max_tokens=max_tokens)
+
 
 from utils.ai_client import safe_json
 
@@ -237,7 +283,8 @@ async def handle_consent(page):
     selectors = [
         'button[aria-label="Accept all"]',
         'button[jsname="b3VHJd"]',
-        '#L2AGLb', '.QS5gu',
+        "#L2AGLb",
+        ".QS5gu",
         'button:has-text("Accept all")',
         'button:has-text("I agree")',
         'button:has-text("Accept")',
@@ -261,34 +308,35 @@ async def handle_consent(page):
 # ─────────────────────────────────────────────────────────────────────────────
 def extract_contacts(text: str) -> dict:
     # Emails
-    email_re = r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}'
+    email_re = r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"
     emails = list(set(re.findall(email_re, text)))
     emails = [
-        e for e in emails
-        if not re.search(r'\.(png|jpg|jpeg|gif|svg|webp|css|js|woff)$', e, re.I)
-        and 'example' not in e
-        and 'sentry' not in e
+        e
+        for e in emails
+        if not re.search(r"\.(png|jpg|jpeg|gif|svg|webp|css|js|woff)$", e, re.I)
+        and "example" not in e
+        and "sentry" not in e
     ]
 
     # Nigerian phones
-    phone_re = r'(\+?234[\s\-]?|0)([789][01][\s\-]?\d{4}[\s\-]?\d{4})'
+    phone_re = r"(\+?234[\s\-]?|0)([789][01][\s\-]?\d{4}[\s\-]?\d{4})"
     raw = re.findall(phone_re, text)
     phones = []
     for prefix, number in raw:
-        clean = re.sub(r'[\s\-]', '', prefix + number)
+        clean = re.sub(r"[\s\-]", "", prefix + number)
         if len(clean) >= 11:
             phones.append(clean)
     phones = list(set(phones))[:5]
 
     # WhatsApp links
-    wa_re = r'wa\.me/(\d+)'
+    wa_re = r"wa\.me/(\d+)"
     wa_matches = re.findall(wa_re, text)
     whatsapp_links = [f"https://wa.me/{m}" for m in wa_matches]
 
     return {
         "emails": emails[:5],
         "phones": phones,
-        "whatsapp_links": whatsapp_links[:3]
+        "whatsapp_links": whatsapp_links[:3],
     }
 
 
@@ -301,7 +349,8 @@ def classify_domain(url: str, business_name: str) -> dict:
 
     url_lower = url.lower()
     name_words = [
-        w for w in re.sub(r'[^a-z0-9 ]', ' ', business_name.lower()).split()
+        w
+        for w in re.sub(r"[^a-z0-9 ]", " ", business_name.lower()).split()
         if len(w) > 3
     ]
 
@@ -310,7 +359,7 @@ def classify_domain(url: str, business_name: str) -> dict:
         return {
             "score": 2,
             "type": "aggregator",
-            "reason": "Third-party directory or social platform"
+            "reason": "Third-party directory or social platform",
         }
 
     # Hosted builder check
@@ -319,7 +368,7 @@ def classify_domain(url: str, business_name: str) -> dict:
         return {
             "score": 7 if name_in_url else 5,
             "type": "hosted_builder",
-            "reason": "Wix/Squarespace/Webflow — their content, not custom domain"
+            "reason": "Wix/Squarespace/Webflow — their content, not custom domain",
         }
 
     # Custom domain — does the business name appear in it?
@@ -328,14 +377,14 @@ def classify_domain(url: str, business_name: str) -> dict:
         return {
             "score": 10,
             "type": "official",
-            "reason": "Custom domain matching business name — confirmed official"
+            "reason": "Custom domain matching business name — confirmed official",
         }
 
     # Custom domain but name doesn't match
     return {
         "score": 6,
         "type": "possible_official",
-        "reason": "Custom domain — name not in URL, needs AI verification"
+        "reason": "Custom domain — name not in URL, needs AI verification",
     }
 
 
@@ -344,6 +393,7 @@ def classify_domain(url: str, business_name: str) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 import urllib.request
 import time
+from utils.symbols import Symbol
 
 # Track Google block status per session
 _google_blocked = False
@@ -394,11 +444,11 @@ async def _search_google_direct(page, query: str, max_links: int = 10) -> list:
     _last_search_time = time.time()
 
     try:
-        encoded = query.replace(' ', '+')
+        encoded = query.replace(" ", "+")
         await page.goto(
             f"https://www.google.com/search?q={encoded}",
             timeout=25000,
-            wait_until="domcontentloaded"
+            wait_until="domcontentloaded",
         )
         await human_pause(6.0, 12.0)
         await handle_consent(page)
@@ -409,15 +459,22 @@ async def _search_google_direct(page, query: str, max_links: int = 10) -> list:
         text = await page.evaluate("() => document.body.innerText")
 
         # Check for block
-        if any(signal in text.lower() for signal in [
-            "unusual traffic", "not a robot", "captcha",
-            "verify you are human", "our systems have detected"
-        ]):
+        if any(
+            signal in text.lower()
+            for signal in [
+                "unusual traffic",
+                "not a robot",
+                "captcha",
+                "verify you are human",
+                "our systems have detected",
+            ]
+        ):
             print(f"      — Google blocked this IP — activating fallback chain")
             _google_blocked = True
             return []
 
-        links = await page.evaluate("""
+        links = await page.evaluate(
+            """
             (bad) => {
                 const links = [];
                 document.querySelectorAll('a[href]').forEach(a => {
@@ -430,10 +487,9 @@ async def _search_google_direct(page, query: str, max_links: int = 10) -> list:
                 });
                 return [...new Set(links)];
             }
-        """, [
-            'google.', 'gstatic.', 'googleusercontent.',
-            'schema.org', 'w3.org'
-        ])
+        """,
+            ["google.", "gstatic.", "googleusercontent.", "schema.org", "w3.org"],
+        )
 
         if links:
             print(f"      {Symbol.CHECK} Google: {len(links[:max_links])} results")
@@ -480,26 +536,37 @@ async def _search_serpapi(query: str, max_links: int = 10) -> list:
 
         try:
             from serpapi import GoogleSearch
-            search = GoogleSearch({
-                "q": query,
-                "api_key": key,
-                "num": max_links,
-                "gl": "ng",
-                "hl": "en",
-                "safe": "off"
-            })
+
+            search = GoogleSearch(
+                {
+                    "q": query,
+                    "api_key": key,
+                    "num": max_links,
+                    "gl": "ng",
+                    "hl": "en",
+                    "safe": "off",
+                }
+            )
             results = search.get_dict()
 
             # Check for errors
             if "error" in results:
                 error_msg = results["error"].lower()
-                if "credit" in error_msg or "limit" in error_msg or "quota" in error_msg:
-                    print(f"      {Symbol.ERROR}  SerpAPI key exhausted — — rotating to next key")
+                if (
+                    "credit" in error_msg
+                    or "limit" in error_msg
+                    or "quota" in error_msg
+                ):
+                    print(
+                        f"      {Symbol.ERROR}  SerpAPI key exhausted — — rotating to next key"
+                    )
                     _serpapi_exhausted_keys.add(key)
                     attempts += 1
                     continue
                 else:
-                    print(f"      {Symbol.ERROR}  SerpAPI error: {results['error'][:60]}")
+                    print(
+                        f"      {Symbol.ERROR}  SerpAPI error: {results['error'][:60]}"
+                    )
                     attempts += 1
                     continue
 
@@ -511,11 +578,15 @@ async def _search_serpapi(query: str, max_links: int = 10) -> list:
 
             if links:
                 key_num = _serpapi_keys.index(key) + 1
-                print(f"      {Symbol.CHECK} SerpAPI key {key_num}: {len(links)} results")
+                print(
+                    f"      {Symbol.CHECK} SerpAPI key {key_num}: {len(links)} results"
+                )
                 return links[:max_links]
 
         except ImportError:
-            print(f"      {Symbol.ERROR}  serpapi not installed — run: pip install google-search-results")
+            print(
+                f"      {Symbol.ERROR}  serpapi not installed — run: pip install google-search-results"
+            )
             break
         except Exception as e:
             print(f"      {Symbol.ERROR}  SerpAPI failed: {str(e)[:50]}")
@@ -529,17 +600,20 @@ async def _search_duckduckgo(query: str, max_links: int = 10) -> list:
     """DuckDuckGo HTML search — no API, very bot-friendly"""
     try:
         await asyncio.sleep(random.uniform(3, 6))
-        encoded = query.replace(' ', '+').replace('"', '%22')
+        encoded = query.replace(" ", "+").replace('"', "%22")
         url = f"https://html.duckduckgo.com/html/?q={encoded}"
 
-        req = urllib.request.Request(url, headers={
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-        })
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+            },
+        )
 
         with urllib.request.urlopen(req, timeout=15) as response:
-            html = response.read().decode('utf-8', errors='ignore')
+            html = response.read().decode("utf-8", errors="ignore")
 
         # Extract result URLs
         links = []
@@ -548,17 +622,15 @@ async def _search_duckduckgo(query: str, max_links: int = 10) -> list:
         url_matches = re.findall(r'class="result__url"[^>]*>([^<]+)<', html)
         for link in url_matches:
             link = link.strip()
-            if not link.startswith('http'):
-                link = 'https://' + link
-            if 'duckduckgo' not in link:
+            if not link.startswith("http"):
+                link = "https://" + link
+            if "duckduckgo" not in link:
                 links.append(link)
 
         # Method 2: href attributes in results
-        href_matches = re.findall(
-            r'href="(https?://(?!.*duckduckgo)[^"]+)"', html
-        )
+        href_matches = re.findall(r'href="(https?://(?!.*duckduckgo)[^"]+)"', html)
         for link in href_matches:
-            if link not in links and 'duckduckgo' not in link:
+            if link not in links and "duckduckgo" not in link:
                 links.append(link)
 
         clean = list(dict.fromkeys(links))  # deduplicate preserving order
@@ -577,29 +649,35 @@ async def _search_bing(query: str, max_links: int = 10) -> list:
     """Bing search — final fallback before giving up"""
     try:
         await asyncio.sleep(random.uniform(3, 6))
-        encoded = query.replace(' ', '+')
+        encoded = query.replace(" ", "+")
         url = f"https://www.bing.com/search?q={encoded}&count={max_links}"
 
-        req = urllib.request.Request(url, headers={
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        })
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            },
+        )
 
         with urllib.request.urlopen(req, timeout=15) as response:
-            html = response.read().decode('utf-8', errors='ignore')
+            html = response.read().decode("utf-8", errors="ignore")
 
         links = re.findall(r'<a[^>]+href="(https?://[^"]+)"', html)
         clean = [
-            l for l in links
-            if 'bing.com' not in l
-            and 'microsoft.com' not in l
-            and 'msn.com' not in l
+            l
+            for l in links
+            if "bing.com" not in l
+            and "microsoft.com" not in l
+            and "msn.com" not in l
             and len(l) > 15
         ]
         clean = list(dict.fromkeys(clean))
 
         if clean:
-            print(f"      {Symbol.CHECK} Bing fallback: {len(clean[:max_links])} results")
+            print(
+                f"      {Symbol.CHECK} Bing fallback: {len(clean[:max_links])} results"
+            )
             return clean[:max_links]
 
     except Exception as e:
@@ -649,7 +727,9 @@ async def smart_search(page, query: str, max_links: int = 10) -> list:
         return links
 
     # Step 5 — All search engines failed
-    print(f"      {Symbol.ERROR}  All search engines failed — working with direct sources only")
+    print(
+        f"      {Symbol.ERROR}  All search engines failed — working with direct sources only"
+    )
     return []
 
 
@@ -660,7 +740,7 @@ async def google_search(page, query: str, max_links=8, retry=2) -> list:
 
 async def collect_discovery_links(page, business_name: str, city: str) -> list:
     """ONE smart search per lead — full fallback chain handles everything"""
-    query = f'{business_name} {city} Nigeria'
+    query = f"{business_name} {city} Nigeria"
 
     links = await smart_search(page, query, max_links=15)
 
@@ -673,17 +753,16 @@ async def collect_discovery_links(page, business_name: str, city: str) -> list:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-async def find_official_website(page, business_name: str, city: str, links: list = None) -> dict:
+async def find_official_website(
+    page, business_name: str, city: str, links: list = None
+) -> dict:
     if not links:
         links = await google_search(page, f'"{business_name}" {city} Nigeria website')
 
     all_candidates = []
     for link in links:
         classification = classify_domain(link, business_name)
-        all_candidates.append({
-            "url": link,
-            "classification": classification
-        })
+        all_candidates.append({"url": link, "classification": classification})
 
     # Sort by score descending
     all_candidates.sort(key=lambda x: x["classification"]["score"], reverse=True)
@@ -692,7 +771,7 @@ async def find_official_website(page, business_name: str, city: str, links: list
     seen = set()
     unique = []
     for c in all_candidates:
-        domain = re.sub(r'https?://(www\.)?', '', c["url"]).split('/')[0]
+        domain = re.sub(r"https?://(www\.)?", "", c["url"]).split("/")[0]
         if domain not in seen:
             seen.add(domain)
             unique.append(c)
@@ -706,30 +785,52 @@ async def find_official_website(page, business_name: str, city: str, links: list
         city_lower = city.lower()
 
         # Foreign domains for Nigerian local businesses
-        foreign_tlds = ['.co.in', '.org.jo', '.co.uk', '.com.au']
+        foreign_tlds = [".co.in", ".org.jo", ".co.uk", ".com.au"]
         if any(tld in url_lower for tld in foreign_tlds):
             # Only keep if business name is in the URL
-            name_words = [w for w in re.sub(r'[^a-z0-9 ]', ' ', name_lower).split() if len(w) > 3]
+            name_words = [
+                w for w in re.sub(r"[^a-z0-9 ]", " ", name_lower).split() if len(w) > 3
+            ]
             if not any(word in url_lower for word in name_words):
                 return True
 
         # Banks, Telecoms, and government sites
         financial_gov_telco = [
-            'fidelitybank', 'gtbank', 'zenithbank', 'accessbank',
-            'firstbank', 'pencom', 'ncc.gov', 'budgit', 'gov.ng',
-            'mtn.ng', 'glo.com', 'airtel', '9mobile', 'stanbic',
-            'ubagroup', 'unionbank'
+            "fidelitybank",
+            "gtbank",
+            "zenithbank",
+            "accessbank",
+            "firstbank",
+            "pencom",
+            "ncc.gov",
+            "budgit",
+            "gov.ng",
+            "mtn.ng",
+            "glo.com",
+            "airtel",
+            "9mobile",
+            "stanbic",
+            "ubagroup",
+            "unionbank",
         ]
         if any(fgt in url_lower for fgt in financial_gov_telco):
             return True
 
         # Academic/journal/research sites
-        academic = ['journal', 'academic', 'research', 'ijefm', 'rscn', 'researchgate', 'paper']
+        academic = [
+            "journal",
+            "academic",
+            "research",
+            "ijefm",
+            "rscn",
+            "researchgate",
+            "paper",
+        ]
         if any(ac in url_lower for ac in academic):
             return True
 
         # Known Directories
-        if 'africabizinfo' in url_lower or 'infoaboutcompanies' in url_lower:
+        if "africabizinfo" in url_lower or "infoaboutcompanies" in url_lower:
             return True
 
         return False
@@ -739,7 +840,10 @@ async def find_official_website(page, business_name: str, city: str, links: list
         best = None
         # Try next candidate
         for candidate in unique[1:]:
-            if not is_clearly_wrong(candidate["url"], business_name, city) and candidate["classification"]["score"] >= 5:
+            if (
+                not is_clearly_wrong(candidate["url"], business_name, city)
+                and candidate["classification"]["score"] >= 5
+            ):
                 best = candidate
                 print(f"      {Symbol.CHECK} Using next best: {best['url'][:60]}")
                 break
@@ -757,8 +861,12 @@ async def find_official_website(page, business_name: str, city: str, links: list
     for candidate in unique[:5]:
         if candidate["classification"]["score"] < 5:
             try:
-                print(f"      {Symbol.SEARCH} Mining aggregator for contacts: {candidate['url'][:60]}")
-                await page.goto(candidate["url"], timeout=12000, wait_until="domcontentloaded")
+                print(
+                    f"      {Symbol.SEARCH} Mining aggregator for contacts: {candidate['url'][:60]}"
+                )
+                await page.goto(
+                    candidate["url"], timeout=12000, wait_until="domcontentloaded"
+                )
                 await handle_consent(page)
                 await human_pause(2.0, 3.5)
                 await human_scroll(page, scrolls=3)
@@ -775,13 +883,15 @@ async def find_official_website(page, business_name: str, city: str, links: list
     # Deduplicate
     aggregator_contacts["emails"] = list(set(aggregator_contacts["emails"]))[:5]
     aggregator_contacts["phones"] = list(set(aggregator_contacts["phones"]))[:5]
-    aggregator_contacts["whatsapp_links"] = list(set(aggregator_contacts["whatsapp_links"]))[:3]
+    aggregator_contacts["whatsapp_links"] = list(
+        set(aggregator_contacts["whatsapp_links"])
+    )[:3]
 
     return {
         "url": best["url"] if best and best["classification"]["score"] >= 5 else None,
         "type": best["classification"]["type"] if best else "none",
         "score": best["classification"]["score"] if best else 0,
-        "aggregator_contacts": aggregator_contacts
+        "aggregator_contacts": aggregator_contacts,
     }
 
 
@@ -806,9 +916,13 @@ Reply with ONLY one word: "official", "aggregator", or "uncertain"
 # ─────────────────────────────────────────────────────────────────────────────
 async def deep_scrape_website(page, url: str) -> dict:
     all_data = {
-        "emails": [], "phones": [], "whatsapp_links": [],
-        "socials": {}, "description": None, "pages_visited": [],
-        "raw_text": ""
+        "emails": [],
+        "phones": [],
+        "whatsapp_links": [],
+        "socials": {},
+        "description": None,
+        "pages_visited": [],
+        "raw_text": "",
     }
 
     if not url:
@@ -872,22 +986,22 @@ async def deep_scrape_website(page, url: str) -> dict:
             contacts = extract_contacts(text + " " + html)
             all_data["emails"] = list(set(all_data["emails"] + contacts["emails"]))
             all_data["phones"] = list(set(all_data["phones"] + contacts["phones"]))
-            all_data["whatsapp_links"] = list(set(
-                all_data["whatsapp_links"] + contacts["whatsapp_links"]
-            ))
+            all_data["whatsapp_links"] = list(
+                set(all_data["whatsapp_links"] + contacts["whatsapp_links"])
+            )
 
             # Social links
             for platform, pattern in {
-                "facebook": r'facebook\.com/([a-zA-Z0-9._\-/]+)',
-                "instagram": r'instagram\.com/([a-zA-Z0-9._\-/]+)',
-                "twitter": r'twitter\.com/([a-zA-Z0-9._\-/]+)',
-                "tiktok": r'tiktok\.com/@([a-zA-Z0-9._\-/]+)',
-                "linkedin": r'linkedin\.com/([a-zA-Z0-9._\-/]+)',
-                "youtube": r'youtube\.com/([a-zA-Z0-9._\-/@/]+)',
+                "facebook": r"facebook\.com/([a-zA-Z0-9._\-/]+)",
+                "instagram": r"instagram\.com/([a-zA-Z0-9._\-/]+)",
+                "twitter": r"twitter\.com/([a-zA-Z0-9._\-/]+)",
+                "tiktok": r"tiktok\.com/@([a-zA-Z0-9._\-/]+)",
+                "linkedin": r"linkedin\.com/([a-zA-Z0-9._\-/]+)",
+                "youtube": r"youtube\.com/([a-zA-Z0-9._\-/@/]+)",
             }.items():
                 match = re.search(pattern, html)
                 if match and platform not in all_data["socials"]:
-                    slug = match.group(1).split('?')[0].rstrip('/')
+                    slug = match.group(1).split("?")[0].rstrip("/")
                     all_data["socials"][platform] = f"https://{platform}.com/{slug}"
 
             # Meta description
@@ -943,26 +1057,36 @@ async def deep_scrape_website(page, url: str) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 # INSTAGRAM SCRAPER
 # ─────────────────────────────────────────────────────────────────────────────
-async def scrape_instagram(page, business_name: str, city: str, links: list = None) -> dict:
+async def scrape_instagram(
+    page, business_name: str, city: str, links: list = None
+) -> dict:
     data = {
-        "found": False, "url": None, "bio": None,
-        "email": None, "phone": None, "whatsapp": None,
-        "followers": None, "posts_sample": []
+        "found": False,
+        "url": None,
+        "bio": None,
+        "email": None,
+        "phone": None,
+        "whatsapp": None,
+        "followers": None,
+        "posts_sample": [],
     }
 
     try:
         if not links:
-            links = await google_search(page, f'"{business_name}" {city} Nigeria instagram')
+            links = await google_search(
+                page, f'"{business_name}" {city} Nigeria instagram'
+            )
 
         ig_links = [
-            l for l in links
-            if 'instagram.com' in l
-            and '/p/' not in l
-            and '/reel' not in l
-            and '/popular/' not in l
-            and '/explore/' not in l
-            and '/stories/' not in l
-            and '/tv/' not in l
+            l
+            for l in links
+            if "instagram.com" in l
+            and "/p/" not in l
+            and "/reel" not in l
+            and "/popular/" not in l
+            and "/explore/" not in l
+            and "/stories/" not in l
+            and "/tv/" not in l
         ]
         if not ig_links:
             return data
@@ -979,7 +1103,7 @@ async def scrape_instagram(page, business_name: str, city: str, links: list = No
 
         # Try to wait for the bio section specifically
         try:
-            await page.wait_for_selector('header section', timeout=8000)
+            await page.wait_for_selector("header section", timeout=8000)
         except:
             pass
 
@@ -992,7 +1116,9 @@ async def scrape_instagram(page, business_name: str, city: str, links: list = No
 
         # If Instagram is showing login wall — extract what we can
         if "log in" in text.lower() and len(text) < 500:
-            print(f"      {Symbol.ERROR}  Instagram login wall — extracting from meta tags")
+            print(
+                f"      {Symbol.ERROR}  Instagram login wall — extracting from meta tags"
+            )
             meta_text = await page.evaluate("""
                 () => {
                     const metas = document.querySelectorAll('meta');
@@ -1012,14 +1138,16 @@ async def scrape_instagram(page, business_name: str, city: str, links: list = No
         data["bio"] = text[:500]
         data["email"] = contacts["emails"][0] if contacts["emails"] else None
         data["phone"] = contacts["phones"][0] if contacts["phones"] else None
-        data["whatsapp"] = contacts["whatsapp_links"][0] if contacts["whatsapp_links"] else None
+        data["whatsapp"] = (
+            contacts["whatsapp_links"][0] if contacts["whatsapp_links"] else None
+        )
 
         # Follower count — try multiple patterns
         follower_patterns = [
-            r'([\d,\.]+[KkMm]?)\s*[Ff]ollower',
-            r'([0-9,]+)\s*Followers',
+            r"([\d,\.]+[KkMm]?)\s*[Ff]ollower",
+            r"([0-9,]+)\s*Followers",
             r'"edge_followed_by":\{"count":(\d+)\}',
-            r'(\d[\d,\.]*[KkMm]?)\s*followers',
+            r"(\d[\d,\.]*[KkMm]?)\s*followers",
         ]
         for pattern in follower_patterns:
             match = re.search(pattern, text + html, re.I)
@@ -1034,7 +1162,9 @@ async def scrape_instagram(page, business_name: str, city: str, links: list = No
                 if meta_desc:
                     meta_content = await meta_desc.get_attribute("content")
                     if meta_content:
-                        match = re.search(r'([\d,\.]+[KkMm]?)\s*[Ff]ollower', meta_content)
+                        match = re.search(
+                            r"([\d,\.]+[KkMm]?)\s*[Ff]ollower", meta_content
+                        )
                         if match:
                             data["followers"] = match.group(1)
             except:
@@ -1051,33 +1181,42 @@ async def scrape_instagram(page, business_name: str, city: str, links: list = No
 # ─────────────────────────────────────────────────────────────────────────────
 # FACEBOOK SCRAPER
 # ─────────────────────────────────────────────────────────────────────────────
-async def scrape_facebook(page, business_name: str, city: str, links: list = None) -> dict:
+async def scrape_facebook(
+    page, business_name: str, city: str, links: list = None
+) -> dict:
     data = {
-        "found": False, "url": None, "about": None,
-        "email": None, "phone": None, "whatsapp": None,
-        "likes": None
+        "found": False,
+        "url": None,
+        "about": None,
+        "email": None,
+        "phone": None,
+        "whatsapp": None,
+        "likes": None,
     }
 
     try:
         if not links:
-            links = await google_search(page, f'"{business_name}" {city} Nigeria facebook')
+            links = await google_search(
+                page, f'"{business_name}" {city} Nigeria facebook'
+            )
 
         fb_links = [
-            l for l in links
-            if 'facebook.com' in l
-            and '/posts/' not in l
-            and '/photos/' not in l
-            and '/events/' not in l
-            and '/videos/' not in l
-            and '/reel' not in l
-            and '/watch' not in l
-            and '/groups/' not in l
-            and '/stories/' not in l
-            and '/marketplace/' not in l
+            l
+            for l in links
+            if "facebook.com" in l
+            and "/posts/" not in l
+            and "/photos/" not in l
+            and "/events/" not in l
+            and "/videos/" not in l
+            and "/reel" not in l
+            and "/watch" not in l
+            and "/groups/" not in l
+            and "/stories/" not in l
+            and "/marketplace/" not in l
         ]
 
         # Prefer pages over personal profiles
-        page_links = [l for l in fb_links if '/p/' in l or 'pages' in l.lower()]
+        page_links = [l for l in fb_links if "/p/" in l or "pages" in l.lower()]
         profile_links = [l for l in fb_links if l not in page_links]
         fb_links = page_links + profile_links
 
@@ -1117,7 +1256,9 @@ async def scrape_facebook(page, business_name: str, city: str, links: list = Non
 
         # Facebook often shows login wall — extract from meta tags too
         if len(text) < 500:
-            print(f"      {Symbol.ERROR}  Facebook limited content — extracting from meta tags")
+            print(
+                f"      {Symbol.ERROR}  Facebook limited content — extracting from meta tags"
+            )
             meta_text = await page.evaluate("""
                 () => {
                     const metas = document.querySelectorAll('meta');
@@ -1138,10 +1279,12 @@ async def scrape_facebook(page, business_name: str, city: str, links: list = Non
         data["about"] = text[:800]
         data["email"] = contacts["emails"][0] if contacts["emails"] else None
         data["phone"] = contacts["phones"][0] if contacts["phones"] else None
-        data["whatsapp"] = contacts["whatsapp_links"][0] if contacts["whatsapp_links"] else None
+        data["whatsapp"] = (
+            contacts["whatsapp_links"][0] if contacts["whatsapp_links"] else None
+        )
 
         # Likes/followers
-        likes_match = re.search(r'([\d,\.]+[KkMm]?)\s*(?:people\s+)?like', text, re.I)
+        likes_match = re.search(r"([\d,\.]+[KkMm]?)\s*(?:people\s+)?like", text, re.I)
         if likes_match:
             data["likes"] = likes_match.group(1)
 
@@ -1156,23 +1299,27 @@ async def scrape_facebook(page, business_name: str, city: str, links: list = Non
 # ─────────────────────────────────────────────────────────────────────────────
 # GOOGLE REVIEWS SENTIMENT ANALYSER
 # ─────────────────────────────────────────────────────────────────────────────
-async def scrape_google_reviews(page, business_name: str, city: str, links: list = None) -> dict:
+async def scrape_google_reviews(
+    page, business_name: str, city: str, links: list = None
+) -> dict:
     data = {
         "reviews_text": "",
         "praises": [],
         "complaints": [],
         "sentiment_summary": None,
         "active": False,
-        "responds_to_reviews": False
+        "responds_to_reviews": False,
     }
 
     try:
         # Go directly to Google Maps — no extra Google search needed
         maps_url = f"https://www.google.com/maps/search/{business_name.replace(' ', '+')}+{city}+Nigeria"
-        
+
         # Check if we already have a maps link in our discovery links
         if links:
-            maps_from_discovery = next((l for l in links if 'google.com/maps' in l), None)
+            maps_from_discovery = next(
+                (l for l in links if "google.com/maps" in l), None
+            )
             if maps_from_discovery:
                 maps_url = maps_from_discovery
 
@@ -1223,7 +1370,9 @@ Extract and return ONLY valid JSON:
 # ─────────────────────────────────────────────────────────────────────────────
 # COMPETITOR FINDER
 # ─────────────────────────────────────────────────────────────────────────────
-async def find_competitors(page, business_name: str, category: str, city: str, links: list = None) -> list:
+async def find_competitors(
+    page, business_name: str, category: str, city: str, links: list = None
+) -> list:
     """Use AI to infer competitors from what we already know — no extra Google search"""
     competitors = []
     try:
@@ -1248,7 +1397,8 @@ Return ONLY valid JSON:
         parsed = safe_json(response)
         if parsed:
             competitors = [
-                c for c in parsed.get("competitors", [])
+                c
+                for c in parsed.get("competitors", [])
                 if c.get("name", "").lower() != business_name.lower()
             ][:3]
     except Exception as e:
@@ -1260,18 +1410,27 @@ Return ONLY valid JSON:
 # OWNER HUNTER — LinkedIn + Google
 # ─────────────────────────────────────────────────────────────────────────────
 async def hunt_owner(page, business_name: str, city: str, links: list = None) -> dict:
-    info = {"owner_name": None, "email": None, "whatsapp": None,
-            "owner_source": None, "email_source": None}
+    info = {
+        "owner_name": None,
+        "email": None,
+        "whatsapp": None,
+        "owner_source": None,
+        "email_source": None,
+    }
 
     all_text = ""
 
     # Only visit pages we already found — no new Google searches
     if links:
-        linkedin_links = [l for l in links if 'linkedin.com' in l][:1]
-        other_links = [l for l in links if 'linkedin.com' not in l
-                      and 'instagram.com' not in l
-                      and 'facebook.com' not in l][:2]
-        
+        linkedin_links = [l for l in links if "linkedin.com" in l][:1]
+        other_links = [
+            l
+            for l in links
+            if "linkedin.com" not in l
+            and "instagram.com" not in l
+            and "facebook.com" not in l
+        ][:2]
+
         for link in linkedin_links + other_links:
             try:
                 print(f"      {Symbol.PAGE} Reading: {link[:70]}")
@@ -1312,7 +1471,9 @@ Return ONLY valid JSON:
             if parsed:
                 if parsed.get("owner_name") and parsed.get("owner_name") != "null":
                     info["owner_name"] = parsed["owner_name"]
-                    info["owner_source"] = f"web ({parsed.get('confidence','?')} confidence)"
+                    info["owner_source"] = (
+                        f"web ({parsed.get('confidence','?')} confidence)"
+                    )
                 if parsed.get("email") and parsed.get("email") != "null":
                     info["email"] = parsed["email"]
                 if parsed.get("whatsapp") and parsed.get("whatsapp") != "null":
@@ -1332,13 +1493,18 @@ def profile_business_personality(lead: dict) -> dict:
     fb_data = lead.get("facebook") or {}
     reviews = lead.get("reviews_analysis") or lead.get("reviews") or {}
 
-    all_text = " ".join(filter(None, [
-        site_data.get("description", ""),
-        site_data.get("raw_text", "")[:1000],
-        ig_data.get("bio", ""),
-        fb_data.get("about", ""),
-        (reviews or {}).get("sentiment_summary", ""),
-    ]))
+    all_text = " ".join(
+        filter(
+            None,
+            [
+                site_data.get("description", ""),
+                site_data.get("raw_text", "")[:1000],
+                ig_data.get("bio", ""),
+                fb_data.get("about", ""),
+                (reviews or {}).get("sentiment_summary", ""),
+            ],
+        )
+    )
 
     city = lead.get("city", "Nigeria")
     prompt = f"""Analyse this business profile for "{lead['name']}" in {city}, Nigeria.
@@ -1384,7 +1550,9 @@ def get_contact_timing(business_type: str = "restaurant") -> dict:
     if month == 12:
         season_note = "December — peak spending season, perfect time to pitch"
     elif month in [3, 4]:
-        season_note = "Easter season — restaurants especially busy, great time to reach out"
+        season_note = (
+            "Easter season — restaurants especially busy, great time to reach out"
+        )
     elif month in [6, 7]:
         season_note = "Mid-year — good time for businesses to invest in growth"
     else:
@@ -1398,9 +1566,10 @@ def get_contact_timing(business_type: str = "restaurant") -> dict:
         "upcoming_event": upcoming_event,
         "season_note": season_note,
         "recommendation": (
-            "Send now — good timing" if is_good_day and is_good_time
+            "Send now — good timing"
+            if is_good_day and is_good_time
             else "Queue for Tuesday–Thursday morning"
-        )
+        ),
     }
 
 
@@ -1450,9 +1619,13 @@ def generate_pitch_angle(lead: dict, personality: dict) -> str:
     competitors = lead.get("competitors") or []
 
     competitor_context = ""
-    better_competitors = [c for c in competitors if c.get("has_website") or c.get("has_online_booking")]
+    better_competitors = [
+        c for c in competitors if c.get("has_website") or c.get("has_online_booking")
+    ]
     if better_competitors:
-        competitor_context = f"Competitor with better digital presence: {better_competitors[0]['name']}"
+        competitor_context = (
+            f"Competitor with better digital presence: {better_competitors[0]['name']}"
+        )
 
     city = lead.get("city", "Nigeria")
     prompt = f"""Write a 3-sentence personalized first-contact pitch for "{lead['name']}" in {city}, Nigeria.
@@ -1502,13 +1675,19 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
             pass
 
     # Only enrich leads that haven't been enriched yet
-    leads = [l for l in all_leads if not l.get("enriched") and l.get("name") not in existing_enriched]
+    leads = [
+        l
+        for l in all_leads
+        if not l.get("enriched") and l.get("name") not in existing_enriched
+    ]
 
     if not leads:
         print(f"{Symbol.CHECK} All leads already enriched — nothing to do")
         return
 
-    print(f"{Symbol.LIST} {len(all_leads)} total leads — enriching {len(leads)} new ones today")
+    print(
+        f"{Symbol.LIST} {len(all_leads)} total leads — enriching {len(leads)} new ones today"
+    )
     print("=" * 65)
 
     async with async_playwright() as p:
@@ -1517,7 +1696,7 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
             viewport={"width": 1366, "height": 768},
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             locale="en-GB",
-            timezone_id="Africa/Lagos"
+            timezone_id="Africa/Lagos",
         )
         page = await context.new_page()
         enriched_leads = []
@@ -1540,12 +1719,14 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
             if google_blocked:
                 print(f"   — Google blocked — working with direct sources only")
                 print(f"   — Will still try Maps, Instagram, Facebook directly")
-            
+
             await human_pause(8.0, 15.0)
 
             # ── 1. Official website
             print(f"\n   {Symbol.WORLD}  STEP 1 — Finding official website...")
-            website_result = await find_official_website(page, name, city, discovery_links)
+            website_result = await find_official_website(
+                page, name, city, discovery_links
+            )
             enriched["official_website"] = website_result
 
             # ── 2. Deep scrape website
@@ -1554,10 +1735,18 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
                 try:
                     site_data = await deep_scrape_website(page, website_result["url"])
                     enriched["website_details"] = site_data
-                    print(f"      {Symbol.EMAIL} Emails:   {site_data['emails'] or 'None'}")
-                    print(f"      {Symbol.PHONE} Phones:   {site_data['phones'] or 'None'}")
-                    print(f"      {Symbol.WHATSAPP} WhatsApp: {site_data['whatsapp_links'] or 'None'}")
-                    print(f"      {Symbol.SOCIAL} Socials:  {list(site_data['socials'].keys()) or 'None'}")
+                    print(
+                        f"      {Symbol.EMAIL} Emails:   {site_data['emails'] or 'None'}"
+                    )
+                    print(
+                        f"      {Symbol.PHONE} Phones:   {site_data['phones'] or 'None'}"
+                    )
+                    print(
+                        f"      {Symbol.WHATSAPP} WhatsApp: {site_data['whatsapp_links'] or 'None'}"
+                    )
+                    print(
+                        f"      {Symbol.SOCIAL} Socials:  {list(site_data['socials'].keys()) or 'None'}"
+                    )
                 except Exception as e:
                     print(f"      — Website scrape failed: {str(e)[:60]} — continuing")
                     enriched["website_details"] = {}
@@ -1573,7 +1762,9 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
             enriched["instagram"] = ig_data
             if ig_data["found"]:
                 print(f"      {Symbol.CHECK} Found: {ig_data['url']}")
-                print(f"      {Symbol.CHECK} Followers: {ig_data['followers'] or 'unknown'}")
+                print(
+                    f"      {Symbol.CHECK} Followers: {ig_data['followers'] or 'unknown'}"
+                )
                 print(f"      {Symbol.EMAIL} Email: {ig_data['email'] or 'None'}")
             else:
                 print(f"      — Not found on Instagram")
@@ -1595,7 +1786,9 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
 
             # ── 5. Reviews & Sentiment
             print(f"\n   — STEP 5 — Analysing Google reviews...")
-            reviews_data = await scrape_google_reviews(page, name, city, discovery_links)
+            reviews_data = await scrape_google_reviews(
+                page, name, city, discovery_links
+            )
             enriched["reviews_analysis"] = reviews_data
             if reviews_data["praises"]:
                 print(f"      {Symbol.CHECK} Praises:    {reviews_data['praises'][:2]}")
@@ -1606,10 +1799,14 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
 
             # ── 6. Competitors
             print(f"\n   {Symbol.PRIDE} STEP 6 — Finding competitors...")
-            competitors = await find_competitors(page, name, category, city, discovery_links)
+            competitors = await find_competitors(
+                page, name, category, city, discovery_links
+            )
             enriched["competitors"] = competitors
             for c in competitors:
-                print(f"      vs {c.get('name')} — website: {c.get('has_website')}, booking: {c.get('has_online_booking')}")
+                print(
+                    f"      vs {c.get('name')} — website: {c.get('has_website')}, booking: {c.get('has_online_booking')}"
+                )
 
             await human_pause(3.0, 5.0)
 
@@ -1622,41 +1819,86 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
 
             # ── 8. Merge all contact data with confidence scoring
             # Pull aggregator contacts found during website search
-            agg_contacts = enriched.get("official_website", {}).get("aggregator_contacts", {})
+            agg_contacts = enriched.get("official_website", {}).get(
+                "aggregator_contacts", {}
+            )
 
-            all_emails = list(set(filter(None, [
-                owner_data.get("email"),
-                ig_data.get("email"),
-                fb_data.get("email"),
-                *(enriched.get("website_details", {}).get("emails", [])),
-                *(agg_contacts.get("emails", [])),
-            ])))
-            all_phones = list(set(filter(None, [
-                owner_data.get("whatsapp"),
-                ig_data.get("phone"),
-                ig_data.get("whatsapp"),
-                fb_data.get("phone"),
-                fb_data.get("whatsapp"),
-                *(enriched.get("website_details", {}).get("phones", [])),
-                *(enriched.get("website_details", {}).get("whatsapp_links", [])),
-                *(agg_contacts.get("phones", [])),
-                *(agg_contacts.get("whatsapp_links", [])),
-            ])))
+            all_emails = list(
+                set(
+                    filter(
+                        None,
+                        [
+                            owner_data.get("email"),
+                            ig_data.get("email"),
+                            fb_data.get("email"),
+                            *(enriched.get("website_details", {}).get("emails", [])),
+                            *(agg_contacts.get("emails", [])),
+                        ],
+                    )
+                )
+            )
+            all_phones = list(
+                set(
+                    filter(
+                        None,
+                        [
+                            owner_data.get("whatsapp"),
+                            ig_data.get("phone"),
+                            ig_data.get("whatsapp"),
+                            fb_data.get("phone"),
+                            fb_data.get("whatsapp"),
+                            *(enriched.get("website_details", {}).get("phones", [])),
+                            *(
+                                enriched.get("website_details", {}).get(
+                                    "whatsapp_links", []
+                                )
+                            ),
+                            *(agg_contacts.get("phones", [])),
+                            *(agg_contacts.get("whatsapp_links", [])),
+                        ],
+                    )
+                )
+            )
 
             # Filter emails for relevance before storing
             if all_emails:
                 relevant_emails = [
-                    e for e in all_emails
-                    if not any(bad in e.lower() for bad in [
-                        'fidelitybank', 'gtbank', 'zenithbank', 'accessbank',
-                        'platgroupng', 'directory.org', 'ijefm', 'rscn',
-                        'budgit', 'pencom', 'ncc.gov', 'example.com',
-                        'halalfoodle', 'placejoys', 'mindtrip',
-                        'your@email', 'test@', 'admin@ijefm',
-                        'board@ijefm', 'info@platgroup', 'nmityasfood',
-                        'mtn.ng', 'glo.com', 'airtel', 'researchgate',
-                        'editor@', 'support@', 'admin@', 'info@africabiz',
-                    ])
+                    e
+                    for e in all_emails
+                    if not any(
+                        bad in e.lower()
+                        for bad in [
+                            "fidelitybank",
+                            "gtbank",
+                            "zenithbank",
+                            "accessbank",
+                            "platgroupng",
+                            "directory.org",
+                            "ijefm",
+                            "rscn",
+                            "budgit",
+                            "pencom",
+                            "ncc.gov",
+                            "example.com",
+                            "halalfoodle",
+                            "placejoys",
+                            "mindtrip",
+                            "your@email",
+                            "test@",
+                            "admin@ijefm",
+                            "board@ijefm",
+                            "info@platgroup",
+                            "nmityasfood",
+                            "mtn.ng",
+                            "glo.com",
+                            "airtel",
+                            "researchgate",
+                            "editor@",
+                            "support@",
+                            "admin@",
+                            "info@africabiz",
+                        ]
+                    )
                 ]
                 all_emails = relevant_emails if relevant_emails else []
 
@@ -1666,17 +1908,31 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
             enriched["all_phones"] = all_phones
 
             # Confidence scores
-            email_sources = [s for s in [
-                "website" if enriched.get("website_details", {}).get("emails") else None,
-                "instagram" if ig_data.get("email") else None,
-                "facebook" if fb_data.get("email") else None,
-                "web search" if owner_data.get("email") else None,
-            ] if s]
-            enriched["email_confidence"] = score_confidence(enriched["contact_email"], email_sources)
+            email_sources = [
+                s
+                for s in [
+                    (
+                        "website"
+                        if enriched.get("website_details", {}).get("emails")
+                        else None
+                    ),
+                    "instagram" if ig_data.get("email") else None,
+                    "facebook" if fb_data.get("email") else None,
+                    "web search" if owner_data.get("email") else None,
+                ]
+                if s
+            ]
+            enriched["email_confidence"] = score_confidence(
+                enriched["contact_email"], email_sources
+            )
             enriched["email_sources"] = email_sources
 
-            print(f"      {Symbol.EMAIL} Email ({enriched['email_confidence']}): {enriched['contact_email'] or 'Not found'}")
-            print(f"      {Symbol.WHATSAPP} WhatsApp: {enriched['contact_whatsapp'] or 'Not found'}")
+            print(
+                f"      {Symbol.EMAIL} Email ({enriched['email_confidence']}): {enriched['contact_email'] or 'Not found'}"
+            )
+            print(
+                f"      {Symbol.WHATSAPP} WhatsApp: {enriched['contact_whatsapp'] or 'Not found'}"
+            )
 
             await human_pause(2.0, 4.0)
 
@@ -1685,10 +1941,16 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
             personality = profile_business_personality(enriched)
             enriched["personality"] = personality
             if personality:
-                print(f"      {Symbol.VIBE} Vibe:        {personality.get('vibe', '?')}")
-                print(f"      {Symbol.TONE}  Tone:        {personality.get('tone_to_use', '?')}")
+                print(
+                    f"      {Symbol.VIBE} Vibe:        {personality.get('vibe', '?')}"
+                )
+                print(
+                    f"      {Symbol.TONE}  Tone:        {personality.get('tone_to_use', '?')}"
+                )
                 print(f"      — Key pride:   {personality.get('key_pride', '?')[:60]}")
-                print(f"      {Symbol.VIBE} Opportunity: {personality.get('biggest_opportunity', '?')[:60]}")
+                print(
+                    f"      {Symbol.VIBE} Opportunity: {personality.get('biggest_opportunity', '?')[:60]}"
+                )
 
             # ── 10. Timing intelligence
             timing = get_contact_timing(category)
@@ -1708,28 +1970,34 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
             nurture = generate_nurture_plan(enriched, personality)
             enriched["nurture_plan"] = nurture
             if nurture.get("referral_message"):
-                print(f"   {Symbol.REFERRAL} Referral: {nurture['referral_message'][:80]}...")
+                print(
+                    f"   {Symbol.REFERRAL} Referral: {nurture['referral_message'][:80]}..."
+                )
 
             # ── Business health score (10-point scale)
-            health_score = sum([
-                bool(enriched.get("official_website", {}).get("url")),
-                bool(enriched.get("contact_email")),
-                bool(enriched.get("contact_whatsapp")),
-                bool(enriched.get("owner_name")),
-                bool(enriched.get("instagram", {}).get("found")),
-                bool(enriched.get("facebook", {}).get("found")),
-                bool(enriched.get("reviews_analysis", {}).get("praises")),
-                enriched["email_confidence"] == "high",
-                bool(enriched.get("personality")),
-                bool(enriched.get("pitch_angle"))
-            ])
+            health_score = sum(
+                [
+                    bool(enriched.get("official_website", {}).get("url")),
+                    bool(enriched.get("contact_email")),
+                    bool(enriched.get("contact_whatsapp")),
+                    bool(enriched.get("owner_name")),
+                    bool(enriched.get("instagram", {}).get("found")),
+                    bool(enriched.get("facebook", {}).get("found")),
+                    bool(enriched.get("reviews_analysis", {}).get("praises")),
+                    enriched["email_confidence"] == "high",
+                    bool(enriched.get("personality")),
+                    bool(enriched.get("pitch_angle")),
+                ]
+            )
             enriched["enrichment_score"] = f"{health_score}/10"
 
             enriched["enriched"] = True
             enriched["enriched_date"] = datetime.now().strftime("%Y-%m-%d")
 
             enriched_leads.append(enriched)
-            print(f"\n   {Symbol.CHECK} {name} complete — enrichment score: {health_score}/8")
+            print(
+                f"\n   {Symbol.CHECK} {name} complete — enrichment score: {health_score}/8"
+            )
 
             # Short human rest between leads
             rest = random.uniform(8.0, 15.0)
@@ -1742,8 +2010,8 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
     # Start from existing, overwrite with newer enriched data
     merged_enriched = dict(existing_enriched)  # copy of previous results
     for l in enriched_leads:
-        if 'name' in l:
-            merged_enriched[l['name']] = l  # new data wins
+        if "name" in l:
+            merged_enriched[l["name"]] = l  # new data wins
     all_enriched = list(merged_enriched.values())
 
     # ── Filter out uncontactable leads (no email AND no whatsapp contact) ──
@@ -1751,10 +2019,16 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
     removed_names = set()
     for l in all_enriched:
         has_email = bool(l.get("contact_email")) or bool(l.get("all_emails"))
-        has_phone = bool(l.get("contact_whatsapp")) or bool(l.get("all_phones")) or bool(l.get("phone"))
+        has_phone = (
+            bool(l.get("contact_whatsapp"))
+            or bool(l.get("all_phones"))
+            or bool(l.get("phone"))
+        )
         if not has_email and not has_phone:
             removed_names.add(l["name"])
-            print(f"   {Symbol.WARN} Removing uncontactable lead (no email & no phone/whatsapp): {l['name']}")
+            print(
+                f"   {Symbol.WARN} Removing uncontactable lead (no email & no phone/whatsapp): {l['name']}"
+            )
         else:
             filtered_enriched.append(l)
     all_enriched = filtered_enriched
@@ -1763,41 +2037,49 @@ async def enrich_all_leads(leads_file: str = "results/leads/leads.json"):
     os.makedirs("results/leads", exist_ok=True)
     with open("results/leads/enriched_leads.json", "w", encoding="utf-8") as f:
         json.dump(all_enriched, f, indent=2, ensure_ascii=False)
-    print(f"   {Symbol.CHECK} Saved {len(all_enriched)} total enriched leads to enriched_leads.json (removed {len(removed_names)} uncontactable leads)")
+    print(
+        f"   {Symbol.CHECK} Saved {len(all_enriched)} total enriched leads to enriched_leads.json (removed {len(removed_names)} uncontactable leads)"
+    )
 
     # Write enriched:true back to leads.json so re-runs skip them, but filter out removed ones
-    enriched_names = {l['name'] for l in all_enriched}
+    enriched_names = {l["name"] for l in all_enriched}
     filtered_all_leads = []
     for l in all_leads:
-        if l.get('name') in removed_names:
+        if l.get("name") in removed_names:
             continue
-        if l.get('name') in enriched_names:
-            l['enriched'] = True
+        if l.get("name") in enriched_names:
+            l["enriched"] = True
         filtered_all_leads.append(l)
 
     with open(leads_file, "w", encoding="utf-8") as f:
         json.dump(filtered_all_leads, f, indent=2, ensure_ascii=False)
-    print(f"   {Symbol.CHECK} Updated leads.json — {len(enriched_names)} leads marked as enriched")
+    print(
+        f"   {Symbol.CHECK} Updated leads.json — {len(enriched_names)} leads marked as enriched"
+    )
 
     # Save clean contact sheet
     contact_sheet = []
     for l in all_enriched:
-        contact_sheet.append({
-            "name": l["name"],
-            "owner": l.get("owner_name"),
-            "email": l.get("contact_email"),
-            "email_confidence": l.get("email_confidence"),
-            "whatsapp": l.get("contact_whatsapp"),
-            "website": l.get("official_website", {}).get("url"),
-            "website_type": l.get("official_website", {}).get("type"),
-            "instagram": l.get("instagram", {}).get("url"),
-            "facebook": l.get("facebook", {}).get("url"),
-            "vibe": l.get("personality", {}).get("vibe"),
-            "biggest_opportunity": l.get("personality", {}).get("biggest_opportunity"),
-            "pitch_angle": l.get("pitch_angle"),
-            "best_send_time": l.get("contact_timing", {}).get("recommendation"),
-            "enrichment_score": l.get("enrichment_score"),
-        })
+        contact_sheet.append(
+            {
+                "name": l["name"],
+                "owner": l.get("owner_name"),
+                "email": l.get("contact_email"),
+                "email_confidence": l.get("email_confidence"),
+                "whatsapp": l.get("contact_whatsapp"),
+                "website": l.get("official_website", {}).get("url"),
+                "website_type": l.get("official_website", {}).get("type"),
+                "instagram": l.get("instagram", {}).get("url"),
+                "facebook": l.get("facebook", {}).get("url"),
+                "vibe": l.get("personality", {}).get("vibe"),
+                "biggest_opportunity": l.get("personality", {}).get(
+                    "biggest_opportunity"
+                ),
+                "pitch_angle": l.get("pitch_angle"),
+                "best_send_time": l.get("contact_timing", {}).get("recommendation"),
+                "enrichment_score": l.get("enrichment_score"),
+            }
+        )
 
     os.makedirs("results/audits", exist_ok=True)
     with open("results/audits/contact_sheet.json", "w", encoding="utf-8") as f:

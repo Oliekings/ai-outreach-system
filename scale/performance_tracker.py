@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 import sys
-sys.stdout.reconfigure(encoding='utf-8')
+
+sys.stdout.reconfigure(encoding="utf-8")
 
 os.makedirs("results/analytics", exist_ok=True)
 
@@ -22,7 +23,7 @@ def load_all_data() -> dict:
         "ig_log": "results/logs/instagram_log.json",
         "fb_log": "results/logs/facebook_log.json",
         "reply_log": "results/replies/reply_log.json",
-        "config": "ceo_config.json"
+        "config": "ceo_config.json",
     }
 
     for key, path in files.items():
@@ -46,7 +47,7 @@ def calculate_channel_metrics(data: dict) -> dict:
         "email": ("email_log", "emails"),
         "whatsapp": ("wa_log", "messages"),
         "instagram": ("ig_log", "messages"),
-        "facebook": ("fb_log", "messages")
+        "facebook": ("fb_log", "messages"),
     }
 
     for channel, (log_key, entries_key) in channel_map.items():
@@ -74,7 +75,7 @@ def calculate_channel_metrics(data: dict) -> dict:
             "success_rate": round((successful / max(total, 1)) * 100, 1),
             "today_sent": today_sent,
             "week_sent": week_sent,
-            "last_sent": entries[-1].get("date") if entries else None
+            "last_sent": entries[-1].get("date") if entries else None,
         }
 
     return metrics
@@ -99,8 +100,10 @@ def calculate_reply_metrics(data: dict) -> dict:
     # Calculate total messages sent for reply rate
     total_sent = 0
     for log_key, entries_key in [
-        ("email_log", "emails"), ("wa_log", "messages"),
-        ("ig_log", "messages"), ("fb_log", "messages")
+        ("email_log", "emails"),
+        ("wa_log", "messages"),
+        ("ig_log", "messages"),
+        ("fb_log", "messages"),
     ]:
         log = data.get(log_key, {})
         entries = log.get(entries_key, [])
@@ -112,9 +115,11 @@ def calculate_reply_metrics(data: dict) -> dict:
         "by_intent": by_intent,
         "by_status": by_status,
         "interested_count": by_intent.get("interested", 0),
-        "interest_rate_pct": round((by_intent.get("interested", 0) / max(total_sent, 1)) * 100, 2),
+        "interest_rate_pct": round(
+            (by_intent.get("interested", 0) / max(total_sent, 1)) * 100, 2
+        ),
         "pending_review": by_status.get("pending_review", 0),
-        "replied": by_status.get("replied", 0)
+        "replied": by_status.get("replied", 0),
     }
 
 
@@ -174,7 +179,7 @@ def calculate_lead_metrics(data: dict) -> dict:
         "by_status": by_status,
         "by_niche": by_niche,
         "by_city": by_city,
-        "contactable": min(with_email, with_wa)
+        "contactable": min(with_email, with_wa),
     }
 
 
@@ -217,7 +222,7 @@ def calculate_revenue_metrics(data: dict) -> dict:
         "interested_leads": len(interested),
         "closed_deals": len(closed),
         "avg_deal_size_ngn": int(pipeline_value / max(len(interested), 1)),
-        "close_rate_pct": round((len(closed) / max(len(leads), 1)) * 100, 2)
+        "close_rate_pct": round((len(closed) / max(len(leads), 1)) * 100, 2),
     }
 
 
@@ -237,12 +242,13 @@ def calculate_daily_trend(data: dict, days: int = 7) -> list:
             ("email", "email_log", "emails"),
             ("whatsapp", "wa_log", "messages"),
             ("instagram", "ig_log", "messages"),
-            ("facebook", "fb_log", "messages")
+            ("facebook", "fb_log", "messages"),
         ]:
             log = data.get(log_key, {})
             entries = log.get(entries_key, [])
             day_sent = sum(
-                1 for e in entries
+                1
+                for e in entries
                 if e.get("date", "").startswith(day) and e.get("success")
             )
             day_data[channel] = day_sent
@@ -250,7 +256,8 @@ def calculate_daily_trend(data: dict, days: int = 7) -> list:
         # Replies
         reply_log = data.get("reply_log", {})
         day_replies = sum(
-            1 for r in reply_log.get("replies", [])
+            1
+            for r in reply_log.get("replies", [])
             if r.get("date_received", "").startswith(day)
         )
         day_data["replies"] = day_replies
@@ -322,7 +329,12 @@ def generate_performance_report(save: bool = True) -> str:
   By Intent:"""
 
     for intent, count in reply_metrics.get("by_intent", {}).items():
-        icon = {"interested": "🔥", "not_interested": "❌", "question": "❓", "out_of_office": "📅"}.get(intent, "•")
+        icon = {
+            "interested": "🔥",
+            "not_interested": "❌",
+            "question": "❓",
+            "out_of_office": "📅",
+        }.get(intent, "•")
         report += f"\n    {icon} {intent}: {count}"
 
     report += f"""
@@ -351,7 +363,9 @@ def generate_performance_report(save: bool = True) -> str:
   🏆 TOP NICHES
   {line}"""
 
-    for niche, count in sorted(lead_metrics["by_niche"].items(), key=lambda x: x[1], reverse=True)[:5]:
+    for niche, count in sorted(
+        lead_metrics["by_niche"].items(), key=lambda x: x[1], reverse=True
+    )[:5]:
         report += f"\n  • {niche}: {count} leads"
 
     report += f"""
@@ -359,7 +373,9 @@ def generate_performance_report(save: bool = True) -> str:
   🌍 TOP CITIES
   {line}"""
 
-    for city, count in sorted(lead_metrics["by_city"].items(), key=lambda x: x[1], reverse=True)[:5]:
+    for city, count in sorted(
+        lead_metrics["by_city"].items(), key=lambda x: x[1], reverse=True
+    )[:5]:
         report += f"\n  • {city}: {count} leads"
 
     report += f"\n\n{'═'*60}\n"
@@ -377,7 +393,7 @@ def generate_performance_report(save: bool = True) -> str:
             "reply_metrics": reply_metrics,
             "lead_metrics": lead_metrics,
             "revenue_metrics": revenue_metrics,
-            "daily_trend": daily_trend
+            "daily_trend": daily_trend,
         }
         json_path = f"results/analytics/snapshot_{timestamp}.json"
         with open(json_path, "w", encoding="utf-8") as f:
@@ -393,7 +409,10 @@ if __name__ == "__main__":
 
     if "--campaign" in sys.argv:
         try:
-            from scale.campaign_manager import get_active_campaign, generate_campaign_report
+            from scale.campaign_manager import (
+                get_active_campaign,
+                generate_campaign_report,
+            )
         except ImportError:
             from campaign_manager import get_active_campaign, generate_campaign_report
         campaign = get_active_campaign()

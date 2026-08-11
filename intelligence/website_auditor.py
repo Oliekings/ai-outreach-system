@@ -9,8 +9,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def get_ai_response(prompt: str, max_tokens: int = 1000) -> str:
     from utils.ai_client import ai_response
+
     return ai_response(prompt, task="audit", max_tokens=max_tokens)
 
 
@@ -32,19 +34,18 @@ async def audit_website(url: str, business_name: str) -> dict:
         "page_title": None,
         "meta_description": None,
         "images_without_alt": 0,
-        "errors": []
+        "errors": [],
     }
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(
-            headless=True,
-            args=["--disable-blink-features=AutomationControlled"]
+            headless=True, args=["--disable-blink-features=AutomationControlled"]
         )
 
         # --- Desktop audit ---
         context = await browser.new_context(
             viewport={"width": 1280, "height": 800},
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         )
 
         # Mask automation signals with advanced stealth script
@@ -101,6 +102,7 @@ async def audit_website(url: str, business_name: str) -> dict:
         try:
             print(f"  ðŸŒ Visiting {url}...")
             import time
+
             start = time.time()
             await page.goto(url, timeout=15000, wait_until="domcontentloaded")
             await page.wait_for_timeout(random.randint(2000, 3000))
@@ -198,7 +200,7 @@ async def audit_website(url: str, business_name: str) -> dict:
         try:
             mobile_context = await browser.new_context(
                 viewport={"width": 390, "height": 844},
-                user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
+                user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
             )
             mobile_page = await mobile_context.new_page()
             await mobile_page.goto(url, timeout=15000, wait_until="domcontentloaded")
@@ -237,37 +239,55 @@ def generate_ai_audit_report(audit_data: dict) -> str:
     issues = []
 
     if audit_data["load_time_seconds"] and audit_data["load_time_seconds"] > 3:
-        issues.append(f"Slow load time ({audit_data['load_time_seconds']}s) â€” visitors leave after 3 seconds")
+        issues.append(
+            f"Slow load time ({audit_data['load_time_seconds']}s) â€” visitors leave after 3 seconds"
+        )
 
     if not audit_data["is_mobile_friendly"]:
-        issues.append("Not mobile friendly â€” over 70% of customers browse on their phones")
+        issues.append(
+            "Not mobile friendly â€” over 70% of customers browse on their phones"
+        )
 
     if not audit_data["has_ssl"]:
-        issues.append("No SSL certificate â€” browser shows 'Not Secure' warning, scaring customers away")
+        issues.append(
+            "No SSL certificate â€” browser shows 'Not Secure' warning, scaring customers away"
+        )
 
     if not audit_data["has_contact_form"]:
         issues.append("No contact form â€” visitors have no easy way to reach them")
 
     if not audit_data["has_whatsapp_button"]:
-        issues.append("No WhatsApp button â€” missing the #1 communication tool in Nigeria")
+        issues.append(
+            "No WhatsApp button â€” missing the #1 communication tool in Nigeria"
+        )
 
     if not audit_data["has_booking_system"]:
-        issues.append("No booking or reservation system â€” customers can't book online")
+        issues.append(
+            "No booking or reservation system â€” customers can't book online"
+        )
 
     if not audit_data["has_google_analytics"]:
-        issues.append("No Google Analytics â€” they have no idea how many people visit their site")
+        issues.append(
+            "No Google Analytics â€” they have no idea how many people visit their site"
+        )
 
     if not audit_data["has_social_links"]:
         issues.append("No social media links â€” disconnected from their own audience")
 
     if audit_data["missing_meta_tags"]:
-        issues.append(f"Missing SEO tags: {', '.join(audit_data['missing_meta_tags'])} â€” hurting Google ranking")
+        issues.append(
+            f"Missing SEO tags: {', '.join(audit_data['missing_meta_tags'])} â€” hurting Google ranking"
+        )
 
     if audit_data["images_without_alt"] > 3:
-        issues.append(f"{audit_data['images_without_alt']} images missing descriptions â€” bad for SEO and accessibility")
+        issues.append(
+            f"{audit_data['images_without_alt']} images missing descriptions â€” bad for SEO and accessibility"
+        )
 
     if not issues:
-        issues.append("Website appears technically sound but could benefit from modern UI/UX improvements and AI-powered features")
+        issues.append(
+            "Website appears technically sound but could benefit from modern UI/UX improvements and AI-powered features"
+        )
 
     prompt = f"""
 You are an expert web consultant writing a friendly but urgent audit report for a business owner.
@@ -307,7 +327,9 @@ async def audit_all_leads(leads_file: str = "results/leads/leads.json"):
         try:
             with open(audit_results_file, "r", encoding="utf-8") as f:
                 old_results = json.load(f)
-                existing_audits = {r["business_name"]: r for r in old_results if "business_name" in r}
+                existing_audits = {
+                    r["business_name"]: r for r in old_results if "business_name" in r
+                }
         except:
             pass
 
@@ -320,7 +342,9 @@ async def audit_all_leads(leads_file: str = "results/leads/leads.json"):
         else:
             to_audit.append(lead)
 
-    print(f"ℹ️  Websites to audit: {len(to_audit)} | Already audited (skipped): {len(already_audited)}")
+    print(
+        f"ℹ️  Websites to audit: {len(to_audit)} | Already audited (skipped): {len(already_audited)}"
+    )
     print("=" * 50)
 
     audit_results = list(already_audited)
@@ -350,30 +374,44 @@ async def audit_all_leads(leads_file: str = "results/leads/leads.json"):
             "business_name": name,
             "website": url,
             "audit": audit_data,
-            "ai_report": ai_report
+            "ai_report": ai_report,
         }
 
         audit_results.append(result)
 
         # Print summary
-        issues_count = sum([
-            audit_data["load_time_seconds"] > 3 if audit_data["load_time_seconds"] else False,
-            not audit_data["is_mobile_friendly"],
-            not audit_data["has_ssl"],
-            not audit_data["has_contact_form"],
-            not audit_data["has_whatsapp_button"],
-            not audit_data["has_booking_system"],
-            not audit_data["has_google_analytics"],
-            not audit_data["has_social_links"],
-            bool(audit_data["missing_meta_tags"]),
-        ])
+        issues_count = sum(
+            [
+                (
+                    audit_data["load_time_seconds"] > 3
+                    if audit_data["load_time_seconds"]
+                    else False
+                ),
+                not audit_data["is_mobile_friendly"],
+                not audit_data["has_ssl"],
+                not audit_data["has_contact_form"],
+                not audit_data["has_whatsapp_button"],
+                not audit_data["has_booking_system"],
+                not audit_data["has_google_analytics"],
+                not audit_data["has_social_links"],
+                bool(audit_data["missing_meta_tags"]),
+            ]
+        )
 
         print(f"   âš ï¸  Issues found: {issues_count}")
-        print(f"   ðŸ“± Mobile friendly: {'âœ…' if audit_data['is_mobile_friendly'] else 'âŒ'}")
+        print(
+            f"   ðŸ“± Mobile friendly: {'âœ…' if audit_data['is_mobile_friendly'] else 'âŒ'}"
+        )
         print(f"   ðŸ”’ SSL: {'âœ…' if audit_data['has_ssl'] else 'âŒ'}")
-        print(f"   ðŸ’¬ WhatsApp button: {'âœ…' if audit_data['has_whatsapp_button'] else 'âŒ'}")
-        print(f"   ðŸ“… Booking system: {'âœ…' if audit_data['has_booking_system'] else 'âŒ'}")
-        print(f"   ðŸ“Š Analytics: {'âœ…' if audit_data['has_google_analytics'] else 'âŒ'}")
+        print(
+            f"   ðŸ’¬ WhatsApp button: {'âœ…' if audit_data['has_whatsapp_button'] else 'âŒ'}"
+        )
+        print(
+            f"   ðŸ“… Booking system: {'âœ…' if audit_data['has_booking_system'] else 'âŒ'}"
+        )
+        print(
+            f"   ðŸ“Š Analytics: {'âœ…' if audit_data['has_google_analytics'] else 'âŒ'}"
+        )
         print(f"\n   ðŸ“ AI Report Preview:")
         print(f"   {ai_report[:200]}...")
 

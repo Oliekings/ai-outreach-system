@@ -11,8 +11,7 @@ from utils.ai_client import ai_response as get_ai_response
 
 load_dotenv()
 
-sys.stdout.reconfigure(encoding='utf-8')
-
+sys.stdout.reconfigure(encoding="utf-8")
 
 
 def load_config() -> dict:
@@ -76,8 +75,10 @@ def approve_all_by_intent(intent: str):
     log = load_reply_log()
     count = 0
     for reply in log["replies"]:
-        if (reply.get("classification", {}).get("intent") == intent and
-                reply.get("status") == "pending_review"):
+        if (
+            reply.get("classification", {}).get("intent") == intent
+            and reply.get("status") == "pending_review"
+        ):
             reply["status"] = "ready_to_send"
             reply["approved_at"] = datetime.now().isoformat()
             count += 1
@@ -88,13 +89,13 @@ def approve_all_by_intent(intent: str):
 
 def auto_approve_pending_replies(deadline_hours: int = 12) -> int:
     """
-    Automatically transition pending review replies to ready_to_send if they 
+    Automatically transition pending review replies to ready_to_send if they
     have been in the queue for longer than the review deadline.
     """
     log = load_reply_log()
     count = 0
     now = datetime.now()
-    
+
     for reply in log.get("replies", []):
         if reply.get("status") == "pending_review":
             processed_str = reply.get("date_processed")
@@ -106,15 +107,21 @@ def auto_approve_pending_replies(deadline_hours: int = 12) -> int:
                 if elapsed.total_seconds() > (deadline_hours * 3600):
                     reply["status"] = "ready_to_send"
                     reply["approved_at"] = now.isoformat()
-                    reply["action_taken"] = f"Auto-approved by AI CEO (Deadline {deadline_hours}h passed)"
-                    print(f"🤖 Auto-approved reply for {reply.get('business')} ({elapsed.total_seconds() / 3600:.1f}h elapsed)")
+                    reply["action_taken"] = (
+                        f"Auto-approved by AI CEO (Deadline {deadline_hours}h passed)"
+                    )
+                    print(
+                        f"🤖 Auto-approved reply for {reply.get('business')} ({elapsed.total_seconds() / 3600:.1f}h elapsed)"
+                    )
                     count += 1
             except Exception as e:
-                print(f"⚠️ Error parsing date_processed for {reply.get('business')}: {e}")
-                
+                print(
+                    f"⚠️ Error parsing date_processed for {reply.get('business')}: {e}"
+                )
+
     if count > 0:
         save_reply_log(log)
-        
+
     return count
 
 
@@ -155,12 +162,14 @@ def get_nurture_queue() -> list:
                 tp_key = f"nurture_day_{day_target}"
                 sent_nurtures = lead.get("sent_nurtures") or []
                 if tp_key not in sent_nurtures:
-                    nurture_leads.append({
-                        "lead": lead,
-                        "touchpoint": tp,
-                        "tp_key": tp_key,
-                        "days_since_reply": days_since
-                    })
+                    nurture_leads.append(
+                        {
+                            "lead": lead,
+                            "touchpoint": tp,
+                            "tp_key": tp_key,
+                            "days_since_reply": days_since,
+                        }
+                    )
 
     return nurture_leads
 
@@ -256,7 +265,11 @@ def generate_handler_report() -> str:
     log = load_reply_log()
     all_replies = log.get("replies", [])
 
-    interested = [r for r in all_replies if r.get("classification", {}).get("intent") == "interested"]
+    interested = [
+        r
+        for r in all_replies
+        if r.get("classification", {}).get("intent") == "interested"
+    ]
     pending = [r for r in all_replies if r.get("status") == "pending_review"]
     ready = [r for r in all_replies if r.get("status") == "ready_to_send"]
     replied = [r for r in all_replies if r.get("status") == "replied"]
@@ -323,6 +336,7 @@ if __name__ == "__main__":
 
     elif "--send" in sys.argv:
         from response_management.reply_monitor import send_queued_replies
+
         dry_run = "--dry-run" in sys.argv
         send_queued_replies(dry_run=dry_run)
 

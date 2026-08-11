@@ -17,7 +17,6 @@ os.makedirs("results/sites/previews", exist_ok=True)
 
 from utils.deploy_site import deploy_site
 
-
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # NICHE COLOR SCHEMES
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -27,71 +26,71 @@ NICHE_THEMES = {
         "secondary": "#1A1A1A",
         "accent": "#F5F0E8",
         "font": "Playfair Display",
-        "hero_phrase": "Experience Unforgettable Flavours"
+        "hero_phrase": "Experience Unforgettable Flavours",
     },
     "salon": {
         "primary": "#8B4F7E",
         "secondary": "#2D2D2D",
         "accent": "#FDF5F9",
         "font": "Cormorant Garamond",
-        "hero_phrase": "Where Beauty Meets Excellence"
+        "hero_phrase": "Where Beauty Meets Excellence",
     },
     "clinic": {
         "primary": "#1B6CA8",
         "secondary": "#1A1A2E",
         "accent": "#F0F8FF",
         "font": "Poppins",
-        "hero_phrase": "Your Health Is Our Priority"
+        "hero_phrase": "Your Health Is Our Priority",
     },
     "hotel": {
         "primary": "#8B6914",
         "secondary": "#1A1A1A",
         "accent": "#FAFAF5",
         "font": "Cormorant Garamond",
-        "hero_phrase": "Luxury Redefined"
+        "hero_phrase": "Luxury Redefined",
     },
     "school": {
         "primary": "#2E6B3E",
         "secondary": "#1A1A2E",
         "accent": "#F0FFF4",
         "font": "Poppins",
-        "hero_phrase": "Building Tomorrow's Leaders Today"
+        "hero_phrase": "Building Tomorrow's Leaders Today",
     },
     "pharmacy": {
         "primary": "#1B8A6B",
         "secondary": "#1A2E2E",
         "accent": "#F0FFF8",
         "font": "Poppins",
-        "hero_phrase": "Your Trusted Health Partner"
+        "hero_phrase": "Your Trusted Health Partner",
     },
     "gym": {
         "primary": "#D4380D",
         "secondary": "#0A0A0A",
         "accent": "#FFF2F0",
         "font": "Oswald",
-        "hero_phrase": "Transform Your Body, Transform Your Life"
+        "hero_phrase": "Transform Your Body, Transform Your Life",
     },
     "church": {
         "primary": "#4A2C7A",
         "secondary": "#1A1A2E",
         "accent": "#F8F5FF",
         "font": "Playfair Display",
-        "hero_phrase": "A Place of Hope, Love and Faith"
+        "hero_phrase": "A Place of Hope, Love and Faith",
     },
     "real_estate": {
         "primary": "#1A3A5C",
         "secondary": "#0A0A1A",
         "accent": "#F5F8FF",
         "font": "Poppins",
-        "hero_phrase": "Find Your Perfect Home"
+        "hero_phrase": "Find Your Perfect Home",
     },
     "default": {
         "primary": "#1A3A5C",
         "secondary": "#0A0A1A",
         "accent": "#F5F8FF",
         "font": "Poppins",
-        "hero_phrase": "Excellence in Every Detail"
-    }
+        "hero_phrase": "Excellence in Every Detail",
+    },
 }
 
 
@@ -167,11 +166,11 @@ Generate ONLY valid JSON with this exact structure:
 
     try:
         response = get_ai_response(prompt, max_tokens=1500)
-        clean = re.sub(r'```json|```', '', response).strip()
-        start = clean.find('{')
-        end = clean.rfind('}')
+        clean = re.sub(r"```json|```", "", response).strip()
+        start = clean.find("{")
+        end = clean.rfind("}")
         if start != -1 and end != -1:
-            content = json.loads(clean[start:end+1])
+            content = json.loads(clean[start : end + 1])
             # Add contact data
             content["phone"] = phone
             content["email"] = email
@@ -223,7 +222,9 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
     niche = lead.get("niche", "business")
 
     # WhatsApp number formatting
-    wa_number = content.get("whatsapp", "").replace("+", "").replace(" ", "").replace("-", "")
+    wa_number = (
+        content.get("whatsapp", "").replace("+", "").replace(" ", "").replace("-", "")
+    )
     if wa_number.startswith("0"):
         wa_number = "234" + wa_number[1:]
     wa_link = f"https://wa.me/{wa_number}?text={content.get('whatsapp_message', '').replace(' ', '%20')}"
@@ -1209,7 +1210,7 @@ def build_html_site(lead: dict, content: dict, theme: dict) -> str:
 def build_sample_site(lead: dict) -> dict:
     name = lead["name"]
     niche = lead.get("niche", "business")
-    safe_name = re.sub(r'[^a-z0-9]', '-', name.lower()).strip('-')
+    safe_name = re.sub(r"[^a-z0-9]", "-", name.lower()).strip("-")
 
     print(f"\n   ðŸŒ Building sample site for: {name}")
 
@@ -1244,7 +1245,7 @@ def build_sample_site(lead: dict) -> dict:
         "theme": theme,
         "content": content,
         "built_at": datetime.now().isoformat(),
-        "status": "ready"
+        "status": "ready",
     }
 
     meta_path = f"results/sites/{safe_name}_meta.json"
@@ -1258,7 +1259,7 @@ def build_sample_site(lead: dict) -> dict:
 
 def build_all_sites(
     enriched_file: str = "results/leads/enriched_leads.json",
-    only_interested: bool = False
+    only_interested: bool = False,
 ) -> list:
     """Build sample sites for leads"""
 

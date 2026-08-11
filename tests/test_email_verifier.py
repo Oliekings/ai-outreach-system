@@ -4,6 +4,7 @@ import smtplib
 
 from intelligence.email_verifier import verify_smtp
 
+
 class TestEmailVerifier(unittest.TestCase):
     def test_invalid_format(self):
         result = verify_smtp("invalid_email")
@@ -35,7 +36,9 @@ class TestEmailVerifier(unittest.TestCase):
     @patch("intelligence.email_verifier.dns.resolver.resolve")
     @patch("intelligence.email_verifier.check_mx_record")
     @patch("intelligence.email_verifier.socket.gethostbyname")
-    def test_valid_smtp_handshake(self, mock_gethostbyname, mock_check_mx, mock_resolve, mock_smtp):
+    def test_valid_smtp_handshake(
+        self, mock_gethostbyname, mock_check_mx, mock_resolve, mock_smtp
+    ):
         mock_gethostbyname.return_value = "1.2.3.4"
         mock_check_mx.return_value = True
 
@@ -59,7 +62,9 @@ class TestEmailVerifier(unittest.TestCase):
     @patch("intelligence.email_verifier.dns.resolver.resolve")
     @patch("intelligence.email_verifier.check_mx_record")
     @patch("intelligence.email_verifier.socket.gethostbyname")
-    def test_invalid_smtp_handshake(self, mock_gethostbyname, mock_check_mx, mock_resolve, mock_smtp):
+    def test_invalid_smtp_handshake(
+        self, mock_gethostbyname, mock_check_mx, mock_resolve, mock_smtp
+    ):
         mock_gethostbyname.return_value = "1.2.3.4"
         mock_check_mx.return_value = True
 
@@ -83,7 +88,9 @@ class TestEmailVerifier(unittest.TestCase):
     @patch("intelligence.email_verifier.dns.resolver.resolve")
     @patch("intelligence.email_verifier.check_mx_record")
     @patch("intelligence.email_verifier.socket.gethostbyname")
-    def test_uncertain_smtp_response(self, mock_gethostbyname, mock_check_mx, mock_resolve, mock_smtp):
+    def test_uncertain_smtp_response(
+        self, mock_gethostbyname, mock_check_mx, mock_resolve, mock_smtp
+    ):
         mock_gethostbyname.return_value = "1.2.3.4"
         mock_check_mx.return_value = True
 
@@ -107,7 +114,9 @@ class TestEmailVerifier(unittest.TestCase):
     @patch("intelligence.email_verifier.dns.resolver.resolve")
     @patch("intelligence.email_verifier.check_mx_record")
     @patch("intelligence.email_verifier.socket.gethostbyname")
-    def test_smtp_connect_error(self, mock_gethostbyname, mock_check_mx, mock_resolve, mock_smtp):
+    def test_smtp_connect_error(
+        self, mock_gethostbyname, mock_check_mx, mock_resolve, mock_smtp
+    ):
         mock_gethostbyname.return_value = "1.2.3.4"
         mock_check_mx.return_value = True
 
@@ -116,7 +125,9 @@ class TestEmailVerifier(unittest.TestCase):
         mock_record.exchange = "mail.example.com"
         mock_resolve.return_value = [mock_record]
 
-        mock_smtp.return_value.__enter__.side_effect = smtplib.SMTPConnectError(421, b"Service not available")
+        mock_smtp.return_value.__enter__.side_effect = smtplib.SMTPConnectError(
+            421, b"Service not available"
+        )
 
         result = verify_smtp("connecterror@example.com")
 
@@ -129,7 +140,9 @@ class TestEmailVerifier(unittest.TestCase):
     @patch("intelligence.email_verifier.dns.resolver.resolve")
     @patch("intelligence.email_verifier.check_mx_record")
     @patch("intelligence.email_verifier.socket.gethostbyname")
-    def test_smtp_timeout(self, mock_gethostbyname, mock_check_mx, mock_resolve, mock_smtp):
+    def test_smtp_timeout(
+        self, mock_gethostbyname, mock_check_mx, mock_resolve, mock_smtp
+    ):
         mock_gethostbyname.return_value = "1.2.3.4"
         mock_check_mx.return_value = True
 
@@ -151,7 +164,9 @@ class TestEmailVerifier(unittest.TestCase):
     @patch("intelligence.email_verifier.dns.resolver.resolve")
     @patch("intelligence.email_verifier.check_mx_record")
     @patch("intelligence.email_verifier.socket.gethostbyname")
-    def test_smtp_inconclusive(self, mock_gethostbyname, mock_check_mx, mock_resolve, mock_smtp):
+    def test_smtp_inconclusive(
+        self, mock_gethostbyname, mock_check_mx, mock_resolve, mock_smtp
+    ):
         mock_gethostbyname.return_value = "1.2.3.4"
         mock_check_mx.return_value = True
 
@@ -160,7 +175,9 @@ class TestEmailVerifier(unittest.TestCase):
         mock_record.exchange = "mail.example.com"
         mock_resolve.return_value = [mock_record]
 
-        mock_smtp.return_value.__enter__.side_effect = Exception("generic network error")
+        mock_smtp.return_value.__enter__.side_effect = Exception(
+            "generic network error"
+        )
 
         result = verify_smtp("inconclusive@example.com")
 
@@ -169,5 +186,6 @@ class TestEmailVerifier(unittest.TestCase):
         self.assertEqual(result["confidence"], 45)
         self.assertIn("SMTP inconclusive", result["reason"])
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
