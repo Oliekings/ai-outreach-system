@@ -11,7 +11,8 @@ load_dotenv()
 sys.stdout.reconfigure(encoding='utf-8')
 
 app = Flask(__name__, static_folder=os.path.join(os.getcwd(), 'dashboard'), static_url_path='')
-CORS(app, supports_credentials=True)
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5055").split(",")
+CORS(app, supports_credentials=True, origins=allowed_origins)
 
 import secrets
 import hmac
