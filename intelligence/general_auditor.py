@@ -65,15 +65,18 @@ config = load_config()
 os.makedirs("results/audits", exist_ok=True)
 os.makedirs("results/reports", exist_ok=True)
 
+
 # ─────────────────────────────────────────────────────────────────────────────
 # AI CLIENT
 # ─────────────────────────────────────────────────────────────────────────────
 def get_ai_response(prompt: str, max_tokens: int = 1000) -> str:
     from utils.ai_client import ai_response
-    return ai_response(prompt, task="audit", max_tokens=max_tokens)
 
+    return ai_response(prompt, task="audit", max_tokens=max_tokens)
 from utils.browser import human_pause, human_scroll, handle_consent
 
+# GRADE CALCULATOR
+# ─────────────────────────────────────────────────────────────────────────────
 def calculate_grade(score: int, max_score: int) -> str:
     if max_score == 0:
         return "N/A"
@@ -1139,6 +1142,177 @@ def generate_report_card(lead: dict, audits: dict, revenue: dict) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 # MAIN AUDITOR
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+def _load_existing_audits(audit_results_file: str) -> dict:
+    existing_audits = {}
+    if os.path.exists(audit_results_file):
+        try:
+            with open(audit_results_file, "r", encoding="utf-8") as f:
+                old_results = json.load(f)
+                existing_audits = {r["name"]: r for r in old_results if "name" in r}
+                print(f"ℹ️  Loaded {len(existing_audits)} existing audit reports.")
+        except Exception as e:
+            print(f"⚠️ Could not load existing audit results: {e}")
+    return existing_audits
+
+
+async def _setup_stealth_context(browser) -> "playwright.async_api.BrowserContext":
+    context = await browser.new_context(
+        viewport={"width": 1366, "height": 768},
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        locale="en-GB",
+        timezone_id="Africa/Lagos",
+    )
+
+    # Mask automation signals with advanced stealth script
+    await context.add_init_script("""
+        // 1. Hide webdriver
+        Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+
+        // 2. Add full chrome object
+        window.chrome = {
+            app: {
+                isInstalled: false,
+                InstallState: { DISABLED: 'DISABLED', INSTALLED: 'INSTALLED', NOT_INSTALLED: 'NOT_INSTALLED' },
+                RunningState: { CANNOT_RUN: 'CANNOT_RUN', RUNNING: 'RUNNING', CAN_RUN: 'CAN_RUN' }
+            },
+            csi: () => {},
+            loadTimes: () => {},
+            runtime: {
+                OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' },
+                OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },
+                PlatformArch: { ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+                PlatformNaclArch: { ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+                PlatformOs: { ANDROID: 'android', CROS: 'cros', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win' },
+                RequestUpdateCheckStatus: { NO_UPDATE: 'no_update', THROTTLED: 'throttled', UPDATE_AVAILABLE: 'update_available' }
+            }
+        };
+
+        // 3. Spoof plugins
+        Object.defineProperty(navigator, 'plugins', {
+            get: () => [
+                { description: "Portable Document Format", filename: "internal-pdf-viewer", name: "Chrome PDF Viewer" },
+                { description: "", filename: "mhjfbmdgcfjbbpaeojofohoefgieoano", name: "Chromium PDF Viewer" },
+                { description: "", filename: "internal-pdf-viewer", name: "Microsoft Edge PDF Viewer" },
+                { description: "", filename: "internal-pdf-viewer", name: "PDF Viewer" },
+                { description: "", filename: "internal-pdf-viewer", name: "WebKit built-in PDF" }
+            ]
+        });
+
+        // 4. Spoof permissions
+        if (window.navigator.permissions) {
+            const originalQuery = window.navigator.permissions.query;
+            window.navigator.permissions.query = (parameters) => (
+                parameters.name === 'notifications' ?
+                    Promise.resolve({ state: Notification.permission }) :
+                    originalQuery(parameters)
+            );
+        }
+
+        // 5. Hardware concurrency and memory
+        Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
+        Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
+    """)
+    return context
+
+
+async def _audit_single_lead(page, lead, index: int, total: int) -> dict:
+    name = lead["name"]
+    website_url = lead.get("official_website", {}).get("url")
+
+    print(f"\n{'='*60}")
+    print(f"{Symbol.SEARCH}¬ [{index}/{total}] Auditing: {name}")
+    print(f"{'='*60}")
+
+    audits = {}
+
+    # 1. Website
+    print(f"\n   {Symbol.WORLD} Website Audit...")
+    audits["website"] = await audit_website(page, website_url, name)
+    print(
+        f"      Grade: {audits['website']['grade']} | Issues: {len(audits['website']['issues'])}"
+    )
+    await human_pause(3.0, 5.0)
+
+    # 2. Google Business
+    print(f"\n   {Symbol.MAPS} Google Business Profile Audit...")
+    audits["google_business"] = await audit_google_business(
+        page, name, lead.get("city", "Abuja")
+    )
+    print(
+        f"      Grade: {audits['google_business']['grade']} | Rating: {audits['google_business'].get('rating')}"
+    )
+    await human_pause(3.0, 5.0)
+
+    # 3. Social Media
+    print(f"\n   {Symbol.SOCIAL} Social Media Audit...")
+    audits["social"] = await audit_social_media(lead)
+    print(
+        f"      Grade: {audits['social']['grade']} | IG: {audits['social']['instagram']['found']} | FB: {audits['social']['facebook']['found']}"
+    )
+    await human_pause(2.0, 3.0)
+
+    # 4. Reputation Audit
+    print(f"\n   {Symbol.TARGET} Reputation Audit...")
+    audits["reputation"] = await audit_reputation(lead)
+    print(
+        f"      Grade: {audits['reputation']['grade']} | Rating: {audits['reputation'].get('overall_rating')}"
+    )
+    await human_pause(2.0, 3.0)
+
+    # 5. SEO
+    print(f"\n   {Symbol.SEARCH}  SEO Audit...")
+    audits["seo"] = await audit_seo(page, name, lead.get("city", "Abuja"), website_url)
+    print(
+        f"      Grade: {audits['seo']['grade']} | Local pack: {audits['seo']['ranks_in_local_pack']}"
+    )
+    await human_pause(3.0, 5.0)
+
+    # 6. WhatsApp
+    print(f"\n   {Symbol.WHATSAPP} WhatsApp Audit...")
+    audits["whatsapp"] = audit_whatsapp(lead)
+    print(
+        f"      Grade: {audits['whatsapp']['grade']} | Has WA: {audits['whatsapp']['has_whatsapp']}"
+    )
+
+    # 7. Competitor Gap
+    print(f"\n   🏆 Competitor Gap Audit...")
+    audits["competitor_gap"] = audit_competitor_gap(
+        lead, audits["website"], audits["social"]
+    )
+    print(
+        f"      Grade: {audits['competitor_gap']['grade']} | Threats: {len(audits['competitor_gap']['urgent_threats'])}"
+    )
+
+    # 8. Revenue Opportunity
+    print(f"\n   💰 Revenue Opportunity...")
+    revenue = calculate_revenue_opportunity(lead, audits)
+    print(f"      Monthly opportunity: ₦{revenue['monthly_lost_naira']:,}")
+
+    # 9. Report Card
+    print(f"\n   {Symbol.LIST} Generating Report Card...")
+    report_card = generate_report_card(lead, audits, revenue)
+    print(report_card)
+
+    # Save individual report
+    report_path = (
+        f"results/reports/{name.replace(' ', '_').replace('/', '_')}_audit.txt"
+    )
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(report_card)
+
+    audit_result = {
+        "name": name,
+        "website": website_url,
+        "audits": audits,
+        "revenue_opportunity": revenue,
+        "report_card_path": report_path,
+        "audited_at": datetime.now().isoformat(),
+    }
+    return audit_result
+
+
 async def audit_all_leads(leads_file: str = "results/leads/enriched_leads.json"):
     if not os.path.exists(leads_file):
         print(f"{Symbol.ERROR} No enriched leads found. Run lead_enricher.py first.")
@@ -1150,16 +1324,8 @@ async def audit_all_leads(leads_file: str = "results/leads/enriched_leads.json")
     print(f"\n{Symbol.SEARCH}¬ General Auditor — Processing {len(leads)} leads\n")
     print("=" * 60)
 
-    existing_audits = {}
     audit_results_file = "results/audits/general_audit_results.json"
-    if os.path.exists(audit_results_file):
-        try:
-            with open(audit_results_file, "r", encoding="utf-8") as f:
-                old_results = json.load(f)
-                existing_audits = {r["name"]: r for r in old_results if "name" in r}
-                print(f"ℹ️  Loaded {len(existing_audits)} existing audit reports.")
-        except Exception as e:
-            print(f"⚠️ Could not load existing audit results: {e}")
+    existing_audits = _load_existing_audits(audit_results_file)
 
     to_audit = []
     already_audited = []
@@ -1192,163 +1358,15 @@ async def audit_all_leads(leads_file: str = "results/leads/enriched_leads.json")
             headless=False,
             args=["--disable-blink-features=AutomationControlled", "--start-maximized"],
         )
-        context = await browser.new_context(
-            viewport={"width": 1366, "height": 768},
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            locale="en-GB",
-            timezone_id="Africa/Lagos",
-        )
-
-        # Mask automation signals with advanced stealth script
-        await context.add_init_script("""
-            // 1. Hide webdriver
-            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-            
-            // 2. Add full chrome object
-            window.chrome = {
-                app: {
-                    isInstalled: false,
-                    InstallState: { DISABLED: 'DISABLED', INSTALLED: 'INSTALLED', NOT_INSTALLED: 'NOT_INSTALLED' },
-                    RunningState: { CANNOT_RUN: 'CANNOT_RUN', RUNNING: 'RUNNING', CAN_RUN: 'CAN_RUN' }
-                },
-                csi: () => {},
-                loadTimes: () => {},
-                runtime: {
-                    OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' },
-                    OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },
-                    PlatformArch: { ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
-                    PlatformNaclArch: { ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
-                    PlatformOs: { ANDROID: 'android', CROS: 'cros', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win' },
-                    RequestUpdateCheckStatus: { NO_UPDATE: 'no_update', THROTTLED: 'throttled', UPDATE_AVAILABLE: 'update_available' }
-                }
-            };
-
-            // 3. Spoof plugins
-            Object.defineProperty(navigator, 'plugins', {
-                get: () => [
-                    { description: "Portable Document Format", filename: "internal-pdf-viewer", name: "Chrome PDF Viewer" },
-                    { description: "", filename: "mhjfbmdgcfjbbpaeojofohoefgieoano", name: "Chromium PDF Viewer" },
-                    { description: "", filename: "internal-pdf-viewer", name: "Microsoft Edge PDF Viewer" },
-                    { description: "", filename: "internal-pdf-viewer", name: "PDF Viewer" },
-                    { description: "", filename: "internal-pdf-viewer", name: "WebKit built-in PDF" }
-                ]
-            });
-
-            // 4. Spoof permissions
-            if (window.navigator.permissions) {
-                const originalQuery = window.navigator.permissions.query;
-                window.navigator.permissions.query = (parameters) => (
-                    parameters.name === 'notifications' ?
-                        Promise.resolve({ state: Notification.permission }) :
-                        originalQuery(parameters)
-                );
-            }
-
-            // 5. Hardware concurrency and memory
-            Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
-            Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
-        """)
+        context = await _setup_stealth_context(browser)
         page = await context.new_page()
 
         for i, lead in enumerate(to_audit, 1):
-            name = lead["name"]
-            website_url = lead.get("official_website", {}).get("url")
-
-            print(f"\n{'='*60}")
-            print(f"{Symbol.SEARCH}¬ [{i}/{len(to_audit)}] Auditing: {name}")
-            print(f"{'='*60}")
-
-            audits = {}
-
-            # 1. Website
-            print(f"\n   {Symbol.WORLD} Website Audit...")
-            audits["website"] = await audit_website(page, website_url, name)
-            print(
-                f"      Grade: {audits['website']['grade']} | Issues: {len(audits['website']['issues'])}"
-            )
-            await human_pause(3.0, 5.0)
-
-            # 2. Google Business
-            print(f"\n   {Symbol.MAPS} Google Business Profile Audit...")
-            audits["google_business"] = await audit_google_business(
-                page, name, lead.get("city", "Abuja")
-            )
-            print(
-                f"      Grade: {audits['google_business']['grade']} | Rating: {audits['google_business'].get('rating')}"
-            )
-            await human_pause(3.0, 5.0)
-
-            # 3. Social Media
-            print(f"\n   {Symbol.SOCIAL} Social Media Audit...")
-            audits["social"] = await audit_social_media(lead)
-            print(
-                f"      Grade: {audits['social']['grade']} | IG: {audits['social']['instagram']['found']} | FB: {audits['social']['facebook']['found']}"
-            )
-            await human_pause(2.0, 3.0)
-
-            # 4. Reputation Audit
-            print(f"\n   {Symbol.TARGET} Reputation Audit...")
-            audits["reputation"] = await audit_reputation(lead)
-            print(
-                f"      Grade: {audits['reputation']['grade']} | Rating: {audits['reputation'].get('overall_rating')}"
-            )
-            await human_pause(2.0, 3.0)
-
-            # 5. SEO
-            print(f"\n   {Symbol.SEARCH}  SEO Audit...")
-            audits["seo"] = await audit_seo(
-                page, name, lead.get("city", "Abuja"), website_url
-            )
-            print(
-                f"      Grade: {audits['seo']['grade']} | Local pack: {audits['seo']['ranks_in_local_pack']}"
-            )
-            await human_pause(3.0, 5.0)
-
-            # 6. WhatsApp
-            print(f"\n   {Symbol.WHATSAPP} WhatsApp Audit...")
-            audits["whatsapp"] = audit_whatsapp(lead)
-            print(
-                f"      Grade: {audits['whatsapp']['grade']} | Has WA: {audits['whatsapp']['has_whatsapp']}"
-            )
-
-            # 7. Competitor Gap
-            print(f"\n   ðŸ† Competitor Gap Audit...")
-            audits["competitor_gap"] = audit_competitor_gap(
-                lead, audits["website"], audits["social"]
-            )
-            print(
-                f"      Grade: {audits['competitor_gap']['grade']} | Threats: {len(audits['competitor_gap']['urgent_threats'])}"
-            )
-
-            # 8. Revenue Opportunity
-            print(f"\n   ðŸ’° Revenue Opportunity...")
-            revenue = calculate_revenue_opportunity(lead, audits)
-            print(f"      Monthly opportunity: â‚¦{revenue['monthly_lost_naira']:,}")
-
-            # 9. Report Card
-            print(f"\n   {Symbol.LIST} Generating Report Card...")
-            report_card = generate_report_card(lead, audits, revenue)
-            print(report_card)
-
-            # Save individual report
-            report_path = (
-                f"results/reports/{name.replace(' ', '_').replace('/', '_')}_audit.txt"
-            )
-            with open(report_path, "w", encoding="utf-8") as f:
-                f.write(report_card)
-
-            audit_result = {
-                "name": name,
-                "website": website_url,
-                "audits": audits,
-                "revenue_opportunity": revenue,
-                "report_card_path": report_path,
-                "audited_at": datetime.now().isoformat(),
-            }
+            audit_result = await _audit_single_lead(page, lead, i, len(to_audit))
             all_audit_results.append(audit_result)
 
             rest = random.uniform(8.0, 12.0)
-            print(f"\n   â³ Resting {rest:.0f}s before next lead...")
+            print(f"\n   ⏳ Resting {rest:.0f}s before next lead...")
             await asyncio.sleep(rest)
 
         await browser.close()
@@ -1369,7 +1387,7 @@ async def audit_all_leads(leads_file: str = "results/leads/enriched_leads.json")
         r["revenue_opportunity"]["monthly_lost_naira"] for r in all_audit_results
     )
     print(f"\nTotal revenue opportunity across all leads:")
-    print(f"â‚¦{total_opportunity:,}/month")
+    print(f"₦{total_opportunity:,}/month")
     print("=" * 60)
 
 
