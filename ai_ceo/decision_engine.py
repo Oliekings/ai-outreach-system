@@ -492,9 +492,12 @@ def execute_decisions(decisions_result: dict, dry_run: bool = False) -> list:
                 })
             else:
                 try:
-                    print(f"      â–¶ï¸  Executing: {command}")
+                    print(f"      â–¶ï¸   Executing: {command}")
+                    parts = command.split()
+                    if parts and parts[0] in ("python", "python3"):
+                        parts[0] = sys.executable
                     result = subprocess.run(
-                        command.split(),
+                        parts,
                         capture_output=True,
                         text=True,
                         encoding='utf-8',

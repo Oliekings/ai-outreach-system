@@ -8,6 +8,8 @@ class Symbol:
     SEARCH = "🔍" if USE_EMOJI else "[SEARCH]"
     STOP = "🛑" if USE_EMOJI else "[STOP]"
     CHECK = "✅" if USE_EMOJI else "[OK]"
+    FIX = "🔧" if USE_EMOJI else "[FIX]"
+
     WORLD = "🌍" if USE_EMOJI else "[WORLD]"
     WARN = "⚠️" if USE_EMOJI else "[WARN]"
     AI = "🧠" if USE_EMOJI else "[AI]"
