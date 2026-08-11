@@ -297,10 +297,8 @@ def get_ai_response(prompt: str, max_tokens: int = 800) -> str:
 
 
 from utils.ai_client import safe_json
-from utils.browser_utils import human_pause, human_scroll, handle_consent
+from utils.browser import human_pause, human_scroll, handle_consent
 
-
-# ─────────────────────────────────────────────────────────────────────────────
 # CONTACT EXTRACTION FROM RAW TEXT
 # ─────────────────────────────────────────────────────────────────────────────
 def extract_contacts(text: str) -> dict:
@@ -863,7 +861,7 @@ async def find_official_website(
                 await page.goto(
                     candidate["url"], timeout=12000, wait_until="domcontentloaded"
                 )
-                await handle_consent(page, fast_mode=True)
+                await handle_consent(page)
                 await human_pause(2.0, 3.5)
                 await human_scroll(page, scrolls=3)
                 text = await page.evaluate("() => document.body.innerText")

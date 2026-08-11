@@ -65,23 +65,15 @@ config = load_config()
 os.makedirs("results/audits", exist_ok=True)
 os.makedirs("results/reports", exist_ok=True)
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # AI CLIENT
 # ─────────────────────────────────────────────────────────────────────────────
 def get_ai_response(prompt: str, max_tokens: int = 1000) -> str:
     from utils.ai_client import ai_response
-
     return ai_response(prompt, task="audit", max_tokens=max_tokens)
 
+from utils.browser import human_pause, human_scroll, handle_consent
 
-from utils.browser_utils import human_pause, human_scroll, handle_consent
-
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# GRADE CALCULATOR
-# ─────────────────────────────────────────────────────────────────────────────
 def calculate_grade(score: int, max_score: int) -> str:
     if max_score == 0:
         return "N/A"
