@@ -1,3 +1,4 @@
+from utils.symbols import Symbol
 import json
 import os
 import re
@@ -14,13 +15,6 @@ sys.path.insert(0, os.getcwd())
 # Ensure directories exist
 os.makedirs("results/knowledge", exist_ok=True)
 os.makedirs("results/logs", exist_ok=True)
-
-class Symbol:
-    BRAIN = "🧠"
-    LEARN = "📖"
-    FIX = "🔧"
-    WARN = "⚠️"
-    CHECK = "✅"
 
 def get_ai_response(prompt: str, max_tokens: int = 1000) -> str:
     from utils.ai_client import ai_response
