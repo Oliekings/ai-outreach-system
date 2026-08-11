@@ -1,6 +1,7 @@
 import unittest
 from intelligence.general_auditor import calculate_grade
 
+
 class TestCalculateGrade(unittest.TestCase):
     def test_max_score_zero(self):
         """Test edge case where max_score is 0 to prevent division by zero."""
@@ -11,7 +12,7 @@ class TestCalculateGrade(unittest.TestCase):
         """Test A+ grade boundaries."""
         self.assertEqual(calculate_grade(90, 100), "A+")
         self.assertEqual(calculate_grade(100, 100), "A+")
-        self.assertEqual(calculate_grade(110, 100), "A+") # > 100%
+        self.assertEqual(calculate_grade(110, 100), "A+")  # > 100%
 
     def test_grade_a(self):
         """Test A grade boundaries."""
@@ -67,7 +68,7 @@ class TestCalculateGrade(unittest.TestCase):
         """Test F grade boundaries."""
         self.assertEqual(calculate_grade(39, 100), "F")
         self.assertEqual(calculate_grade(0, 100), "F")
-        self.assertEqual(calculate_grade(-10, 100), "F") # < 0%
+        self.assertEqual(calculate_grade(-10, 100), "F")  # < 0%
 
     def test_fractional_percentages(self):
         """Test handling of percentages with fractions."""
@@ -77,6 +78,7 @@ class TestCalculateGrade(unittest.TestCase):
         self.assertEqual(calculate_grade(899, 1000), "A")
         # 90.0 / 100 = 90.0% -> A+
         self.assertEqual(calculate_grade(900, 1000), "A+")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -10,70 +10,38 @@ from groq import Groq
 
 load_dotenv()
 
-class Symbol:
-    """Clean logging symbols that work across all terminals"""
-    USE_EMOJI = False # Set to True if your terminal supports UTF-8 emojis
-    
-    LIST = "📋" if USE_EMOJI else "[LIST]"
-    LEAD = "💎" if USE_EMOJI else "[LEAD]"
-    SEARCH = "🔍" if USE_EMOJI else "[SEARCH]"
-    STOP = "🛑" if USE_EMOJI else "[STOP]"
-    CHECK = "✅" if USE_EMOJI else "[OK]"
-    WORLD = "🌍" if USE_EMOJI else "[WORLD]"
-    WARN = "⚠️" if USE_EMOJI else "[WARN]"
-    AI = "🧠" if USE_EMOJI else "[AI]"
-    VIBE = "🎨" if USE_EMOJI else "[VIBE]"
-    TONE = "🗣️" if USE_EMOJI else "[TONE]"
-    PRIDE = "🆕" if USE_EMOJI else "[PRIDE]"
-    TARGET = "🎯" if USE_EMOJI else "[TARGET]"
-    TIME = "⏰" if USE_EMOJI else "[TIME]"
-    NURTURE = "🌱" if USE_EMOJI else "[NURTURE]"
-    REFERRAL = "🤝" if USE_EMOJI else "[REFERRAL]"
-    EMAIL = "📧" if USE_EMOJI else "[EMAIL]"
-    PHONE = "📞" if USE_EMOJI else "[PHONE]"
-    WHATSAPP = "💬" if USE_EMOJI else "[WHATSAPP]"
-    SOCIAL = "📱" if USE_EMOJI else "[SOCIAL]"
-    INSTAGRAM = "📸" if USE_EMOJI else "[INSTAGRAM]"
-    FACEBOOK = "📘" if USE_EMOJI else "[FACEBOOK]"
-    RETRY = "🔄" if USE_EMOJI else "[RETRY]"
-    BOT = "🛡️" if USE_EMOJI else "[BOT-WALL]"
-    WAIT = "⏳" if USE_EMOJI else "[WAIT]"
-    PITCH = "💡" if USE_EMOJI else "[PITCH]"
-    PAGE = "📄" if USE_EMOJI else "[PAGE]"
-    MAPS = "📍" if USE_EMOJI else "[MAPS]"
-    ERROR = "❌" if USE_EMOJI else "[ERROR]"
-    HUMAN = "🧑" if USE_EMOJI else "[USER]"
-
-sys.stdout.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding="utf-8")
 
 
 def get_ai_response(prompt: str, max_tokens: int = 1500) -> str:
     from utils.ai_client import ai_response
+
     return ai_response(prompt, task="decide", max_tokens=max_tokens)
 
 
 from utils.ai_client import safe_json
+from utils.symbols import Symbol
 
 
 def is_safe_command(command: str) -> bool:
     """Validate that the command is in the whitelist and has no malicious characters."""
     if not command:
         return False
-    
+
     # Strip whitespace
     cmd = command.strip()
-    
+
     # Must start with python
     if not (cmd.startswith("python ") or cmd.startswith("python3 ")):
         return False
-        
+
     # Split into parts
     parts = cmd.split()
     if len(parts) < 2:
         return False
-        
+
     script = parts[1]
-    
+
     # Whitelist of allowed scripts
     allowed_scripts = {
         "intelligence/lead_finder.py",
@@ -97,19 +65,18 @@ def is_safe_command(command: str) -> bool:
         "ai_ceo/scheduler.py",
         "ai_ceo/reviewer.py",
     }
-    
+
     if script not in allowed_scripts:
         return False
-        
+
     # Verify remaining arguments are safe: only alphanumeric, dashes, underscores, spaces, or simple values
     # Absolutely no shell metacharacters like ;, &, |, $, `, >, <, \, *, ? etc.
-    safe_pattern = re.compile(r'^[\w\s\-\=\.\/]*$')
+    safe_pattern = re.compile(r"^[\w\s\-\=\.\/]*$")
     for arg in parts[2:]:
         if not safe_pattern.match(arg):
             return False
-            
-    return True
 
+    return True
 
 
 def load_config() -> dict:
@@ -130,7 +97,7 @@ def read_full_system_state() -> dict:
         "campaigns": [],
         "expansion": [],
         "knowledge": [],
-        "workflow": {}
+        "workflow": {},
     }
 
     # Workflow state
@@ -139,13 +106,13 @@ def read_full_system_state() -> dict:
         try:
             with open(workflow_file, "r", encoding="utf-8") as f:
                 w_state = json.load(f)
-            
+
             # Check if it needs to refresh daily
             last_updated_str = w_state.get("last_updated")
             needs_reset = False
             if last_updated_str:
                 try:
-                    clean_str = last_updated_str.split('+')[0].replace('Z', '')
+                    clean_str = last_updated_str.split("+")[0].replace("Z", "")
                     last_dt = datetime.fromisoformat(clean_str)
                     if last_dt.date() != datetime.now().date():
                         needs_reset = True
@@ -158,18 +125,18 @@ def read_full_system_state() -> dict:
                 w_state = {
                     "current_step": "audit",
                     "status": "idle",
-                    "last_updated": datetime.now().isoformat()
+                    "last_updated": datetime.now().isoformat(),
                 }
                 os.makedirs(os.path.dirname(workflow_file), exist_ok=True)
                 with open(workflow_file, "w", encoding="utf-8") as f:
                     json.dump(w_state, f, indent=4, ensure_ascii=False)
-            
+
             state["workflow"] = w_state
         except:
             state["workflow"] = {
                 "current_step": "audit",
                 "status": "idle",
-                "last_updated": datetime.now().isoformat()
+                "last_updated": datetime.now().isoformat(),
             }
 
     # Leads state
@@ -184,9 +151,11 @@ def read_full_system_state() -> dict:
             "with_email": len([l for l in leads if l.get("contact_email")]),
             "with_whatsapp": len([l for l in leads if l.get("contact_whatsapp")]),
             "interested": len([l for l in leads if l.get("status") == "interested"]),
-            "not_interested": len([l for l in leads if l.get("status") == "not_interested"]),
+            "not_interested": len(
+                [l for l in leads if l.get("status") == "not_interested"]
+            ),
             "site_built": len([l for l in leads if l.get("site_built")]),
-            "average_score": _avg_enrichment_score(leads)
+            "average_score": _avg_enrichment_score(leads),
         }
 
     # Outreach state
@@ -194,7 +163,7 @@ def read_full_system_state() -> dict:
         "email": "results/logs/send_log.json",
         "whatsapp": "results/logs/whatsapp_log.json",
         "instagram": "results/logs/instagram_log.json",
-        "facebook": "results/logs/facebook_log.json"
+        "facebook": "results/logs/facebook_log.json",
     }
 
     today = datetime.now().strftime("%Y-%m-%d")
@@ -203,17 +172,16 @@ def read_full_system_state() -> dict:
             with open(path, "r", encoding="utf-8") as f:
                 log = json.load(f)
 
-            entries = log.get(
-                "emails" if channel == "email" else "messages", []
-            )
+            entries = log.get("emails" if channel == "email" else "messages", [])
             state["outreach"][channel] = {
                 "total_sent": sum(1 for e in entries if e.get("success")),
                 "sent_today": sum(
-                    1 for e in entries
+                    1
+                    for e in entries
                     if e.get("date", "").startswith(today) and e.get("success")
                 ),
                 "failed": sum(1 for e in entries if not e.get("success")),
-                "stats": log.get("stats", {})
+                "stats": log.get("stats", {}),
             }
 
     # Reply state
@@ -225,12 +193,34 @@ def read_full_system_state() -> dict:
         replies = reply_log.get("replies", [])
         state["replies"] = {
             "total": len(replies),
-            "interested": len([r for r in replies if r.get("classification", {}).get("intent") == "interested"]),
-            "not_interested": len([r for r in replies if r.get("classification", {}).get("intent") == "not_interested"]),
-            "questions": len([r for r in replies if r.get("classification", {}).get("intent") == "question"]),
-            "pending_review": len([r for r in replies if r.get("status") == "pending_review"]),
-            "ready_to_send": len([r for r in replies if r.get("status") == "ready_to_send"]),
-            "replied": len([r for r in replies if r.get("status") == "replied"])
+            "interested": len(
+                [
+                    r
+                    for r in replies
+                    if r.get("classification", {}).get("intent") == "interested"
+                ]
+            ),
+            "not_interested": len(
+                [
+                    r
+                    for r in replies
+                    if r.get("classification", {}).get("intent") == "not_interested"
+                ]
+            ),
+            "questions": len(
+                [
+                    r
+                    for r in replies
+                    if r.get("classification", {}).get("intent") == "question"
+                ]
+            ),
+            "pending_review": len(
+                [r for r in replies if r.get("status") == "pending_review"]
+            ),
+            "ready_to_send": len(
+                [r for r in replies if r.get("status") == "ready_to_send"]
+            ),
+            "replied": len([r for r in replies if r.get("status") == "replied"]),
         }
 
     # Performance metrics
@@ -251,8 +241,11 @@ def read_full_system_state() -> dict:
         "reply_rate": round(total_replies / max(total_sent, 1) * 100, 1),
         "interest_rate": round(total_interested / max(total_sent, 1) * 100, 1),
         "conversion_rate": round(
-            state["leads"].get("interested", 0) / max(state["leads"].get("total", 1), 1) * 100, 1
-        )
+            state["leads"].get("interested", 0)
+            / max(state["leads"].get("total", 1), 1)
+            * 100,
+            1,
+        ),
     }
 
     # Scale & Campaign state
@@ -261,23 +254,28 @@ def read_full_system_state() -> dict:
         try:
             with open(campaign_file, "r", encoding="utf-8") as f:
                 state["campaigns"] = json.load(f)
-        except: pass
+        except:
+            pass
 
     # Expansion roadmap
     try:
         from scale.city_manager import get_expansion_roadmap
+
         config_data = load_config()
         cities = config_data.get("outreach", {}).get("cities", ["Uromi"])
         current_city = cities[0] if cities else "Uromi"
         state["expansion"] = get_expansion_roadmap(current_city)
-    except: pass
+    except:
+        pass
 
     # Deep Revenue Metrics (from scale module)
     try:
         from scale.performance_tracker import calculate_revenue_metrics, load_all_data
+
         data = load_all_data()
         state["revenue"] = calculate_revenue_metrics(data)
-    except: pass
+    except:
+        pass
 
     # Evolution & Knowledge state
     lessons_file = "results/knowledge/lessons_learned.json"
@@ -285,7 +283,8 @@ def read_full_system_state() -> dict:
         try:
             with open(lessons_file, "r", encoding="utf-8") as f:
                 state["knowledge"] = json.load(f)
-        except: pass
+        except:
+            pass
 
     # Daily Progress resets daily
     def is_modified_today(filepath: str) -> bool:
@@ -303,10 +302,12 @@ def read_full_system_state() -> dict:
         "discovered_today": is_modified_today("results/leads/leads.json"),
         "enriched_today": is_modified_today("results/leads/enriched_leads.json"),
         "audited_today": is_modified_today("results/audits/audit_results.json"),
-        "crafted_today": is_modified_today("results/messages/sequences/master_sequence.json"),
+        "crafted_today": is_modified_today(
+            "results/messages/sequences/master_sequence.json"
+        ),
         "sent_today": outreach_sent_today > 0,
         "replies_checked_today": is_modified_today("results/replies/reply_log.json"),
-        "audit_done_today": os.path.exists(f"results/ceo/audit_{today_str}.json")
+        "audit_done_today": os.path.exists(f"results/ceo/audit_{today_str}.json"),
     }
 
     return state
@@ -394,78 +395,90 @@ Return ONLY valid JSON:
     workflow = state.get("workflow", {})
     current_step = workflow.get("current_step", "audit")
     last_updated_str = workflow.get("last_updated")
-    
+
     if last_updated_str:
         try:
             last_updated = datetime.fromisoformat(last_updated_str)
             hours_passed = (datetime.now() - last_updated).total_seconds() / 3600
-            
+
             if hours_passed >= 12:
                 # Need to advance workflow
                 if current_step == "audit":
-                    decisions.append({
-                        "action": "run_command",
-                        "command": "python intelligence/general_auditor.py",
-                        "reason": f"Workflow timeout ({hours_passed:.1f}h): Running Auditor",
-                        "priority": 1,
-                        "autonomous": True
-                    })
+                    decisions.append(
+                        {
+                            "action": "run_command",
+                            "command": "python intelligence/general_auditor.py",
+                            "reason": f"Workflow timeout ({hours_passed:.1f}h): Running Auditor",
+                            "priority": 1,
+                            "autonomous": True,
+                        }
+                    )
                 elif current_step == "craft":
-                    decisions.append({
-                        "action": "run_command",
-                        "command": "python outreach/message_writer.py",
-                        "reason": f"Workflow timeout ({hours_passed:.1f}h): Crafting Messages",
-                        "priority": 1,
-                        "autonomous": True
-                    })
+                    decisions.append(
+                        {
+                            "action": "run_command",
+                            "command": "python outreach/message_writer.py",
+                            "reason": f"Workflow timeout ({hours_passed:.1f}h): Crafting Messages",
+                            "priority": 1,
+                            "autonomous": True,
+                        }
+                    )
                 elif current_step == "outreach":
-                    decisions.append({
-                        "action": "run_command",
-                        "command": "python outreach/email_sender.py",
-                        "reason": f"Workflow timeout ({hours_passed:.1f}h): Running Outreach",
-                        "priority": 1,
-                        "autonomous": True
-                    })
+                    decisions.append(
+                        {
+                            "action": "run_command",
+                            "command": "python outreach/email_sender.py",
+                            "reason": f"Workflow timeout ({hours_passed:.1f}h): Running Outreach",
+                            "priority": 1,
+                            "autonomous": True,
+                        }
+                    )
         except:
             pass
 
     # Always check replies first
     if state["replies"].get("interested", 0) > 0:
-        decisions.append({
-            "action": "run_command",
-            "command": "python response_management/reply_monitor.py --send",
-            "reason": "Interested leads waiting for reply",
-            "priority": 2,
-            "autonomous": True
-        })
+        decisions.append(
+            {
+                "action": "run_command",
+                "command": "python response_management/reply_monitor.py --send",
+                "reason": "Interested leads waiting for reply",
+                "priority": 2,
+                "autonomous": True,
+            }
+        )
 
     # Check inbox
-    decisions.append({
-        "action": "run_command",
-        "command": "python response_management/reply_monitor.py",
-        "reason": "Daily inbox check",
-        "priority": 2,
-        "autonomous": True
-    })
+    decisions.append(
+        {
+            "action": "run_command",
+            "command": "python response_management/reply_monitor.py",
+            "reason": "Daily inbox check",
+            "priority": 2,
+            "autonomous": True,
+        }
+    )
 
     # Send WhatsApp if slots available
     wa_today = state["outreach"].get("whatsapp", {}).get("sent_today", 0)
     wa_limit = config["outreach"]["daily_whatsapp_limit"]
     if wa_today < wa_limit:
-        decisions.append({
-            "action": "run_command",
-            "command": "python outreach/whatsapp_sender.py",
-            "reason": f"WhatsApp slots available: {wa_limit - wa_today}",
-            "priority": 3,
-            "autonomous": True
-        })
+        decisions.append(
+            {
+                "action": "run_command",
+                "command": "python outreach/whatsapp_sender.py",
+                "reason": f"WhatsApp slots available: {wa_limit - wa_today}",
+                "priority": 3,
+                "autonomous": True,
+            }
+        )
 
     return {
         "decisions": decisions,
         "alerts": [],
         "performance_insight": "System running on fallback decisions",
         "recommendation": "Check system manually",
-        "pipeline_health": "unknown"
+        "pipeline_health": "unknown",
     }
 
 
@@ -490,39 +503,37 @@ def execute_decisions(decisions_result: dict, dry_run: bool = False) -> list:
 
         if action == "alert_owner":
             print(f"      ðŸš¨ ALERT: {reason}")
-            executed.append({
-                "decision": decision,
-                "executed": True,
-                "result": "alert_sent"
-            })
+            executed.append(
+                {"decision": decision, "executed": True, "result": "alert_sent"}
+            )
             continue
 
         if action == "skip":
-            executed.append({
-                "decision": decision,
-                "executed": False,
-                "result": "skipped"
-            })
+            executed.append(
+                {"decision": decision, "executed": False, "result": "skipped"}
+            )
             continue
 
         if action == "run_command" and command and autonomous:
             if not is_safe_command(command):
-                print(f"      🛑 SECURITY ALERT: Command blocked by whitelist: '{command}'")
-                executed.append({
-                    "decision": decision,
-                    "executed": False,
-                    "success": False,
-                    "result": "blocked_by_security_whitelist"
-                })
+                print(
+                    f"      🛑 SECURITY ALERT: Command blocked by whitelist: '{command}'"
+                )
+                executed.append(
+                    {
+                        "decision": decision,
+                        "executed": False,
+                        "success": False,
+                        "result": "blocked_by_security_whitelist",
+                    }
+                )
                 continue
 
             if dry_run:
                 print(f"      {Symbol.SEARCH}  DRY RUN — would run: {command}")
-                executed.append({
-                    "decision": decision,
-                    "executed": False,
-                    "result": "dry_run"
-                })
+                executed.append(
+                    {"decision": decision, "executed": False, "result": "dry_run"}
+                )
             else:
                 try:
                     print(f"      â–¶ï¸  Executing: {command}")
@@ -530,36 +541,42 @@ def execute_decisions(decisions_result: dict, dry_run: bool = False) -> list:
                         command.split(),
                         capture_output=True,
                         text=True,
-                        encoding='utf-8',
-                        timeout=300
+                        encoding="utf-8",
+                        timeout=300,
                     )
                     success = result.returncode == 0
-                    executed.append({
-                        "decision": decision,
-                        "executed": True,
-                        "success": success,
-                        "output": result.stdout[-500:] if result.stdout else "",
-                        "result": "completed" if success else "failed"
-                    })
+                    executed.append(
+                        {
+                            "decision": decision,
+                            "executed": True,
+                            "success": success,
+                            "output": result.stdout[-500:] if result.stdout else "",
+                            "result": "completed" if success else "failed",
+                        }
+                    )
                     if success:
                         print(f"      {Symbol.CHECK} Completed")
                     else:
                         print(f"      âŒ Failed: {result.stderr[:100]}")
                 except subprocess.TimeoutExpired:
                     print(f"      â±ï¸  Timed out")
-                    executed.append({
-                        "decision": decision,
-                        "executed": True,
-                        "success": False,
-                        "result": "timeout"
-                    })
+                    executed.append(
+                        {
+                            "decision": decision,
+                            "executed": True,
+                            "success": False,
+                            "result": "timeout",
+                        }
+                    )
                 except Exception as e:
                     print(f"      âŒ Error: {str(e)[:80]}")
-                    executed.append({
-                        "decision": decision,
-                        "executed": True,
-                        "success": False,
-                        "result": str(e)[:80]
-                    })
+                    executed.append(
+                        {
+                            "decision": decision,
+                            "executed": True,
+                            "success": False,
+                            "result": str(e)[:80],
+                        }
+                    )
 
     return executed

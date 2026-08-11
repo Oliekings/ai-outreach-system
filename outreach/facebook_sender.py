@@ -8,15 +8,16 @@ from datetime import datetime
 from playwright.async_api import async_playwright
 from dotenv import load_dotenv
 
-if sys.platform == 'win32':
+if sys.platform == "win32":
     try:
-        sys.stdout.reconfigure(encoding='utf-8')
-        sys.stderr.reconfigure(encoding='utf-8')
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
     except AttributeError:
         pass
 
 load_dotenv()
 import pathlib
+
 # Ensure project root is on sys.path so 'from outreach.x import ...' always works
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
@@ -56,22 +57,28 @@ def already_sent_fb(log: dict, page_url: str, business: str, msg_key: str) -> bo
         except:
             entry_idx = 0
 
-        if (entry_business.lower().strip() == business.lower().strip() and
-                entry_idx >= curr_idx and
-                entry.get("success")):
+        if (
+            entry_business.lower().strip() == business.lower().strip()
+            and entry_idx >= curr_idx
+            and entry.get("success")
+        ):
             return True
-            
+
         # Also check page URL if matching specific profile/page target
-        if entry.get("page") == page_url and entry.get("success") and entry_idx >= curr_idx:
+        if (
+            entry.get("page") == page_url
+            and entry.get("success")
+            and entry_idx >= curr_idx
+        ):
             return True
     return False
-
 
 
 def get_todays_fb_count(log: dict) -> int:
     today = datetime.now().strftime("%Y-%m-%d")
     return sum(
-        1 for e in log["messages"]
+        1
+        for e in log["messages"]
         if e.get("date", "").startswith(today) and e.get("success")
     )
 
@@ -128,7 +135,9 @@ async def dismiss_popups(page):
 async def ensure_fb_session(page) -> bool:
     """Ensure Facebook is logged in"""
     print("   📘 Loading Facebook...")
-    await page.goto("https://www.facebook.com", timeout=30000, wait_until="domcontentloaded")
+    await page.goto(
+        "https://www.facebook.com", timeout=30000, wait_until="domcontentloaded"
+    )
     await human_pause(3.0, 5.0)
     await handle_consent(page)
     await human_pause(2.0, 4.0)
@@ -172,11 +181,11 @@ async def ensure_fb_session(page) -> bool:
         if attempt == 29:
             print("   ❌ Facebook login timeout")
             await page.screenshot(path="results/logs/fb_login_timeout.png")
-            
+
             html = await page.content()
             with open("results/logs/fb_login_timeout.html", "w", encoding="utf-8") as f:
                 f.write(html)
-                
+
             print("   📸 Saved screenshot to results/logs/fb_login_timeout.png")
             return False
 
@@ -184,16 +193,13 @@ async def ensure_fb_session(page) -> bool:
 
 
 async def send_facebook_message(
-    page,
-    page_url: str,
-    message: str,
-    business_name: str
+    page, page_url: str, message: str, business_name: str
 ) -> dict:
     result = {
         "success": False,
         "page": page_url,
         "business": business_name,
-        "error": None
+        "error": None,
     }
 
     try:
@@ -351,7 +357,9 @@ def get_next_fb_message(lead_name: str, log: dict) -> tuple:
     return "complete", None
 
 
-async def send_all_facebook(dry_run: bool = False, force: bool = False, ignore_timing: bool = False):
+async def send_all_facebook(
+    dry_run: bool = False, force: bool = False, ignore_timing: bool = False
+):
     config = load_config()
     log = load_fb_log()
     daily_limit = config["outreach"]["daily_facebook_limit"]
@@ -365,7 +373,8 @@ async def send_all_facebook(dry_run: bool = False, force: bool = False, ignore_t
         leads = json.load(f)
 
     leads_with_fb = [
-        l for l in leads
+        l
+        for l in leads
         if l.get("facebook", {}).get("found") and l.get("facebook", {}).get("url")
     ]
 
@@ -395,7 +404,10 @@ async def send_all_facebook(dry_run: bool = False, force: bool = False, ignore_t
             print(f"     Page: {msg_data.get('to', '')}")
             print(f"     Key: {msg_key}")
             from outreach.message_writer import clean_message_content
-            print(f"     Message: {clean_message_content(msg_data.get('message', ''), default_option=3)[:100]}...")
+
+            print(
+                f"     Message: {clean_message_content(msg_data.get('message', ''), default_option=3)[:100]}..."
+            )
             print()
         return
 
@@ -444,13 +456,13 @@ async def send_all_facebook(dry_run: bool = False, force: bool = False, ignore_t
 
             page_url = msg_data.get("to", "")
             from outreach.message_writer import clean_message_content
-            message = clean_message_content(msg_data.get("message", ""), default_option=3)
+
+            message = clean_message_content(
+                msg_data.get("message", ""), default_option=3
+            )
 
             send_result = await send_facebook_message(
-                page=page,
-                page_url=page_url,
-                message=message,
-                business_name=name
+                page=page, page_url=page_url, message=message, business_name=name
             )
 
             log_entry = {
@@ -461,7 +473,7 @@ async def send_all_facebook(dry_run: bool = False, force: bool = False, ignore_t
                 "message": message,  # SAVE FULL MESSAGE TEXT
                 "date": datetime.now().isoformat(),
                 "success": send_result["success"],
-                "error": send_result.get("error")
+                "error": send_result.get("error"),
             }
             log["messages"].append(log_entry)
 
@@ -493,7 +505,10 @@ async def send_all_facebook(dry_run: bool = False, force: bool = False, ignore_t
 
 if __name__ == "__main__":
     import sys
+
     dry_run = "--dry-run" in sys.argv
     force = "--force" in sys.argv
     ignore_timing = "--ignore-timing" in sys.argv
-    asyncio.run(send_all_facebook(dry_run=dry_run, force=force, ignore_timing=ignore_timing))
+    asyncio.run(
+        send_all_facebook(dry_run=dry_run, force=force, ignore_timing=ignore_timing)
+    )

@@ -2,43 +2,10 @@ import os
 import json
 import sys
 from datetime import datetime
+from utils.symbols import Symbol
 
-class Symbol:
-    """Clean logging symbols that work across all terminals"""
-    USE_EMOJI = False # Set to True if your terminal supports UTF-8 emojis
-    
-    LIST = "📋" if USE_EMOJI else "[LIST]"
-    LEAD = "💎" if USE_EMOJI else "[LEAD]"
-    SEARCH = "🔍" if USE_EMOJI else "[SEARCH]"
-    STOP = "🛑" if USE_EMOJI else "[STOP]"
-    CHECK = "✅" if USE_EMOJI else "[OK]"
-    WORLD = "🌍" if USE_EMOJI else "[WORLD]"
-    WARN = "⚠️" if USE_EMOJI else "[WARN]"
-    AI = "🧠" if USE_EMOJI else "[AI]"
-    VIBE = "🎨" if USE_EMOJI else "[VIBE]"
-    TONE = "🗣️" if USE_EMOJI else "[TONE]"
-    PRIDE = "🆕" if USE_EMOJI else "[PRIDE]"
-    TARGET = "🎯" if USE_EMOJI else "[TARGET]"
-    TIME = "⏰" if USE_EMOJI else "[TIME]"
-    NURTURE = "🌱" if USE_EMOJI else "[NURTURE]"
-    REFERRAL = "🤝" if USE_EMOJI else "[REFERRAL]"
-    EMAIL = "📧" if USE_EMOJI else "[EMAIL]"
-    PHONE = "📞" if USE_EMOJI else "[PHONE]"
-    WHATSAPP = "💬" if USE_EMOJI else "[WHATSAPP]"
-    SOCIAL = "📱" if USE_EMOJI else "[SOCIAL]"
-    INSTAGRAM = "📸" if USE_EMOJI else "[INSTAGRAM]"
-    FACEBOOK = "📘" if USE_EMOJI else "[FACEBOOK]"
-    RETRY = "🔄" if USE_EMOJI else "[RETRY]"
-    BOT = "🛡️" if USE_EMOJI else "[BOT-WALL]"
-    WAIT = "⏳" if USE_EMOJI else "[WAIT]"
-    PITCH = "💡" if USE_EMOJI else "[PITCH]"
-    PAGE = "📄" if USE_EMOJI else "[PAGE]"
-    MAPS = "📍" if USE_EMOJI else "[MAPS]"
-    ERROR = "❌" if USE_EMOJI else "[ERROR]"
-    HUMAN = "🧑" if USE_EMOJI else "[USER]"
+sys.stdout.reconfigure(encoding="utf-8")
 
-
-sys.stdout.reconfigure(encoding='utf-8')
 
 def sync_master_sequence_to_files(sequences):
     """
@@ -47,23 +14,25 @@ def sync_master_sequence_to_files(sequences):
     """
     if not isinstance(sequences, list):
         return
-        
+
     for lead_seq in sequences:
         lead_name = lead_seq.get("lead")
         if not lead_name:
             continue
-            
+
         # Use same safe name format as the Python sender scripts
         safe_name = lead_name.replace(" ", "_").replace("/", "_").replace("&", "and")
-        
+
         # 1. Update {safe_name}_sequence.json
         os.makedirs("results/messages/sequences", exist_ok=True)
         ind_seq_path = f"results/messages/sequences/{safe_name}_sequence.json"
         with open(ind_seq_path, "w", encoding="utf-8") as f:
             json.dump(lead_seq.get("sequence", []), f, indent=2, ensure_ascii=False)
-            
+
         # 2. Update {safe_name}_emails.json (for email sender)
-        email_sequence = [m for m in lead_seq.get("sequence", []) if m.get("channel") == "email"]
+        email_sequence = [
+            m for m in lead_seq.get("sequence", []) if m.get("channel") == "email"
+        ]
         if email_sequence:
             os.makedirs("results/emails", exist_ok=True)
             email_path = f"results/emails/{safe_name}_emails.json"
@@ -72,17 +41,17 @@ def sync_master_sequence_to_files(sequences):
                 email_data[f"email_{i}"] = {
                     "subject": email_msg.get("subject", ""),
                     "body": email_msg.get("content", ""),
-                    "send_day": email_msg.get("day", 1)
+                    "send_day": email_msg.get("day", 1),
                 }
             with open(email_path, "w", encoding="utf-8") as f:
                 json.dump(email_data, f, indent=2, ensure_ascii=False)
-                
+
         # 3. Update channel-specific JSON files for other channels
         wa_data = {}
         ig_data = {}
         fb_data = {}
         wa_count, ig_count, fb_count = 1, 1, 1
-        
+
         for msg in lead_seq.get("sequence", []):
             ch = msg.get("channel")
             if ch == "whatsapp":
@@ -90,7 +59,7 @@ def sync_master_sequence_to_files(sequences):
                     "to": msg.get("to", ""),
                     "message": msg.get("content", ""),
                     "send_day": msg.get("day", 1),
-                    "channel": "whatsapp"
+                    "channel": "whatsapp",
                 }
                 wa_count += 1
             elif ch == "instagram":
@@ -98,7 +67,7 @@ def sync_master_sequence_to_files(sequences):
                     "to": msg.get("to", ""),
                     "message": msg.get("content", ""),
                     "send_day": msg.get("day", 1),
-                    "channel": "instagram"
+                    "channel": "instagram",
                 }
                 ig_count += 1
             elif ch == "facebook":
@@ -106,22 +75,34 @@ def sync_master_sequence_to_files(sequences):
                     "to": msg.get("to", ""),
                     "message": msg.get("content", ""),
                     "send_day": msg.get("day", 1),
-                    "channel": "facebook"
+                    "channel": "facebook",
                 }
                 fb_count += 1
-        
+
         # Write individual channel files
         if wa_data:
             os.makedirs("results/messages/whatsapp", exist_ok=True)
-            with open(f"results/messages/whatsapp/{safe_name}_whatsapp.json", "w", encoding="utf-8") as f:
+            with open(
+                f"results/messages/whatsapp/{safe_name}_whatsapp.json",
+                "w",
+                encoding="utf-8",
+            ) as f:
                 json.dump(wa_data, f, indent=2, ensure_ascii=False)
         if ig_data:
             os.makedirs("results/messages/instagram", exist_ok=True)
-            with open(f"results/messages/instagram/{safe_name}_instagram.json", "w", encoding="utf-8") as f:
+            with open(
+                f"results/messages/instagram/{safe_name}_instagram.json",
+                "w",
+                encoding="utf-8",
+            ) as f:
                 json.dump(ig_data, f, indent=2, ensure_ascii=False)
         if fb_data:
             os.makedirs("results/messages/facebook", exist_ok=True)
-            with open(f"results/messages/facebook/{safe_name}_facebook.json", "w", encoding="utf-8") as f:
+            with open(
+                f"results/messages/facebook/{safe_name}_facebook.json",
+                "w",
+                encoding="utf-8",
+            ) as f:
                 json.dump(fb_data, f, indent=2, ensure_ascii=False)
 
 
@@ -131,49 +112,44 @@ def review_all_pending_messages(autonomous: bool = False) -> dict:
     Approves them if they meet quality standards, or edits/rejects them.
     If autonomous is True, automatically transitions eligible queued messages to approved.
     """
-    results = {
-        "reviewed": 0,
-        "approved": 0,
-        "needs_edit": 0,
-        "rejected": 0
-    }
-    
+    results = {"reviewed": 0, "approved": 0, "needs_edit": 0, "rejected": 0}
+
     seq_file = "results/messages/sequences/master_sequence.json"
     if not os.path.exists(seq_file):
         print("   No master sequence found.")
         return results
-        
+
     try:
         with open(seq_file, "r", encoding="utf-8") as f:
             sequences = json.load(f)
     except Exception as e:
         print(f"   Error loading master sequence: {e}")
         return results
-        
+
     updated = False
-    
+
     for lead_seq in sequences:
         lead_name = lead_seq.get("lead", "Unknown")
         for msg in lead_seq.get("sequence", []):
             status = msg.get("status", "queued")
             if status != "queued":
                 continue
-                
+
             results["reviewed"] += 1
             content = msg.get("content", "")
             content_lower = content.lower()
-            
+
             # Simple heuristic review
             has_placeholders = (
-                "[" in content or 
-                "]" in content or 
-                "<" in content or 
-                ">" in content or 
-                "placeholder" in content_lower or 
-                "insert here" in content_lower or
-                "insert_here" in content_lower
+                "[" in content
+                or "]" in content
+                or "<" in content
+                or ">" in content
+                or "placeholder" in content_lower
+                or "insert here" in content_lower
+                or "insert_here" in content_lower
             )
-            
+
             if len(content.strip()) < 20:
                 msg["status"] = "rejected"
                 msg["review_notes"] = "Message too short."
@@ -195,8 +171,10 @@ def review_all_pending_messages(autonomous: bool = False) -> dict:
                     print(f"   {Symbol.CHECK} Auto-approved message for {lead_name}")
                 else:
                     # Stays queued, but counted as reviewed
-                    print(f"   ⏳ Message for {lead_name} meets criteria, waiting for human approval")
-                    
+                    print(
+                        f"   ⏳ Message for {lead_name} meets criteria, waiting for human approval"
+                    )
+
     if updated:
         try:
             os.makedirs(os.path.dirname(seq_file), exist_ok=True)
@@ -205,5 +183,5 @@ def review_all_pending_messages(autonomous: bool = False) -> dict:
             sync_master_sequence_to_files(sequences)
         except Exception as e:
             print(f"   ⚠️  Failed to save updated master sequence: {e}")
-            
+
     return results

@@ -8,43 +8,10 @@ import json
 import re
 import sys
 from dotenv import load_dotenv
+
 load_dotenv()
 
-class Symbol:
-    """Clean logging symbols that work across all terminals"""
-    USE_EMOJI = False # Set to True if your terminal supports UTF-8 emojis
-    
-    LIST = "📋" if USE_EMOJI else "[LIST]"
-    LEAD = "💎" if USE_EMOJI else "[LEAD]"
-    SEARCH = "🔍" if USE_EMOJI else "[SEARCH]"
-    STOP = "🛑" if USE_EMOJI else "[STOP]"
-    CHECK = "✅" if USE_EMOJI else "[OK]"
-    WORLD = "🌍" if USE_EMOJI else "[WORLD]"
-    WARN = "⚠️" if USE_EMOJI else "[WARN]"
-    AI = "🧠" if USE_EMOJI else "[AI]"
-    VIBE = "🎨" if USE_EMOJI else "[VIBE]"
-    TONE = "🗣️" if USE_EMOJI else "[TONE]"
-    PRIDE = "🆕" if USE_EMOJI else "[PRIDE]"
-    TARGET = "🎯" if USE_EMOJI else "[TARGET]"
-    TIME = "⏰" if USE_EMOJI else "[TIME]"
-    NURTURE = "🌱" if USE_EMOJI else "[NURTURE]"
-    REFERRAL = "🤝" if USE_EMOJI else "[REFERRAL]"
-    EMAIL = "📧" if USE_EMOJI else "[EMAIL]"
-    PHONE = "📞" if USE_EMOJI else "[PHONE]"
-    WHATSAPP = "💬" if USE_EMOJI else "[WHATSAPP]"
-    SOCIAL = "📱" if USE_EMOJI else "[SOCIAL]"
-    INSTAGRAM = "📸" if USE_EMOJI else "[INSTAGRAM]"
-    FACEBOOK = "📘" if USE_EMOJI else "[FACEBOOK]"
-    RETRY = "🔄" if USE_EMOJI else "[RETRY]"
-    BOT = "🛡️" if USE_EMOJI else "[BOT-WALL]"
-    WAIT = "⏳" if USE_EMOJI else "[WAIT]"
-    PITCH = "💡" if USE_EMOJI else "[PITCH]"
-    PAGE = "📄" if USE_EMOJI else "[PAGE]"
-    MAPS = "📍" if USE_EMOJI else "[MAPS]"
-    ERROR = "❌" if USE_EMOJI else "[ERROR]"
-    HUMAN = "🧑" if USE_EMOJI else "[USER]"
-
-sys.stdout.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding="utf-8")
 
 os.makedirs("results/emails", exist_ok=True)
 os.makedirs("results/messages", exist_ok=True)
@@ -59,9 +26,12 @@ os.makedirs("results/messages/sequences", exist_ok=True)
 # ─────────────────────────────────────────────────────────────────────────────
 def get_ai_response(prompt: str, max_tokens: int = 1500, retry: int = 3) -> str:
     from utils.ai_client import ai_response
+
     return ai_response(prompt, task="generate", max_tokens=max_tokens, retry=retry)
 
+
 from utils.ai_client import safe_json
+from utils.symbols import Symbol
 
 
 def clean_message_content(content: str, default_option: int = 2) -> str:
@@ -69,24 +39,25 @@ def clean_message_content(content: str, default_option: int = 2) -> str:
     If the content contains multiple options/variations (formatted with headers),
     extract a single clean option to avoid sending headers and all options.
     If the user has edited the message and removed the headers, returns the content as-is.
-    
+
     default_option = 1: Professional & Formal (index 0)
     default_option = 2: Warm & Conversational (index 1)
     default_option = 3: Short DM (index 2)
     """
     if not content:
         return ""
-        
+
     lines = content.splitlines()
     options = {}  # key: int (1, 2, or 3) -> list of lines
     current_option = None
-    
+
     import re
+
     header_pat = re.compile(
-        r'^\s*(?:Option\s*(\d+)\s*[:\-]|Variation\s*(\d+)\s*[:\-]|===\s*VARIATION\s*(\d+)\s*===|Option\s*(\d+)\s*$|Variation\s*(\d+)\s*$)',
-        re.IGNORECASE
+        r"^\s*(?:Option\s*(\d+)\s*[:\-]|Variation\s*(\d+)\s*[:\-]|===\s*VARIATION\s*(\d+)\s*===|Option\s*(\d+)\s*$|Variation\s*(\d+)\s*$)",
+        re.IGNORECASE,
     )
-    
+
     has_headers = False
     for line in lines:
         match = header_pat.match(line)
@@ -98,10 +69,10 @@ def clean_message_content(content: str, default_option: int = 2) -> str:
         else:
             if current_option is not None:
                 options[current_option].append(line)
-                
+
     if not has_headers:
         return content
-        
+
     # Pick preferred option
     if default_option == 3:
         pref_order = [3, 2, 1]
@@ -109,15 +80,14 @@ def clean_message_content(content: str, default_option: int = 2) -> str:
         pref_order = [1, 2, 3]
     else:
         pref_order = [2, 1, 3]
-        
+
     for opt in pref_order:
         if opt in options:
             opt_content = "\n".join(options[opt]).strip()
             if opt_content:
                 return opt_content
-                
-    return content
 
+    return content
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -165,22 +135,22 @@ def build_lead_context(lead: dict) -> dict:
     praises = reviews.get("praises") or []
     complaints = reviews.get("complaints") or []
     compliment = personality.get("compliment_hook") or (
-        f"the incredible {praises[0]}" if praises else
-        f"what you've built at {lead['name']}"
+        f"the incredible {praises[0]}"
+        if praises
+        else f"what you've built at {lead['name']}"
     )
 
     # Most urgent pain point
     pain = personality.get("pain_hook") or (
-        complaints[0] if complaints else
-        personality.get("biggest_opportunity") or
-        "your digital presence"
+        complaints[0]
+        if complaints
+        else personality.get("biggest_opportunity") or "your digital presence"
     )
 
     # Revenue hook
     monthly_lost = revenue.get("monthly_lost_naira", 0)
     revenue_hook = (
-        f"₦{monthly_lost:,}/month in potential revenue" if monthly_lost > 0
-        else None
+        f"₦{monthly_lost:,}/month in potential revenue" if monthly_lost > 0 else None
     )
 
     # Competitor threat
@@ -200,8 +170,8 @@ def build_lead_context(lead: dict) -> dict:
     raw_ig_url = ig.get("url") or ""
     if raw_ig_url and "instagram.com" in raw_ig_url:
         ig_match = re.search(
-            r'(https?://(?:www\.)?instagram\.com/[a-zA-Z0-9._]{2,}?)(?:/reels|/posts|/tagged|/\?|/#|$)',
-            raw_ig_url
+            r"(https?://(?:www\.)?instagram\.com/[a-zA-Z0-9._]{2,}?)(?:/reels|/posts|/tagged|/\?|/#|$)",
+            raw_ig_url,
         )
         instagram_url = ig_match.group(1).rstrip("/") if ig_match else None
     else:
@@ -213,8 +183,8 @@ def build_lead_context(lead: dict) -> dict:
     if raw_fb_url and "facebook.com" in raw_fb_url:
         # Extract clean page URL — must be at least 5 chars after facebook.com/
         fb_match = re.search(
-            r'(https?://(?:www\.)?facebook\.com/(?!p$|pg/|pages/)[a-zA-Z0-9._\-]{3,})',
-            raw_fb_url
+            r"(https?://(?:www\.)?facebook\.com/(?!p$|pg/|pages/)[a-zA-Z0-9._\-]{3,})",
+            raw_fb_url,
         )
         facebook_url = fb_match.group(1) if fb_match else None
         # Reject numeric-only IDs that are too short
@@ -281,7 +251,7 @@ def build_lead_context(lead: dict) -> dict:
         "rating": lead.get("rating"),
         "reviews": lead.get("reviews"),
         "city": lead.get("city", "Abuja"),
-        "sample_site_url": lead.get("site_url")
+        "sample_site_url": lead.get("site_url"),
     }
 
 
@@ -424,9 +394,7 @@ Return ONLY valid JSON:
 
     emails = {}
 
-    for key, prompt in [
-        ("email_1", prompt_email1)
-    ]:
+    for key, prompt in [("email_1", prompt_email1)]:
         try:
             response = get_ai_response(prompt, max_tokens=800)
             parsed = safe_json(response)
@@ -446,7 +414,7 @@ Option 3: Short High-Conversion DM
                     "body": body_content.strip(),
                     "preview_text": parsed.get("preview_text", ""),
                     "send_day": 0,
-                    "channel": "email"
+                    "channel": "email",
                 }
             else:
                 emails[key] = {"error": "Failed to parse AI response"}
@@ -566,9 +534,7 @@ Return ONLY valid JSON:
 
     messages = {}
 
-    for key, prompt in [
-        ("wa_1", prompt_wa1)
-    ]:
+    for key, prompt in [("wa_1", prompt_wa1)]:
         try:
             response = get_ai_response(prompt, max_tokens=800)
             parsed = safe_json(response)
@@ -586,7 +552,7 @@ Option 3: Short High-Conversion DM
                     "to": ctx["all_phones"],
                     "message": msg_content.strip(),
                     "send_day": 1,
-                    "channel": "whatsapp"
+                    "channel": "whatsapp",
                 }
             else:
                 messages[key] = {"error": "Failed to parse AI response"}
@@ -594,9 +560,6 @@ Option 3: Short High-Conversion DM
             messages[key] = {"error": str(e)}
 
     return messages
-
-
-
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -608,7 +571,7 @@ def build_send_sequence(
     emails: dict,
     whatsapp: dict,
     instagram: dict = None,
-    facebook: dict = None
+    facebook: dict = None,
 ) -> list:
     instagram = instagram or {}
     facebook = facebook or {}
@@ -631,48 +594,56 @@ def build_send_sequence(
     # WhatsApp
     if ctx.get("whatsapp"):
         for msg in extract_messages(whatsapp, "message"):
-            sequence.append({
-                "day": msg.get("send_day", 1),
-                "channel": "whatsapp",
-                "to": ctx["whatsapp"],
-                "content": msg.get("message", ""),
-                "status": "queued"
-            })
+            sequence.append(
+                {
+                    "day": msg.get("send_day", 1),
+                    "channel": "whatsapp",
+                    "to": ctx["whatsapp"],
+                    "content": msg.get("message", ""),
+                    "status": "queued",
+                }
+            )
 
     # Instagram
     if ctx.get("on_instagram") and ctx.get("instagram_url"):
         for msg in extract_messages(instagram, "message"):
-            sequence.append({
-                "day": msg.get("send_day", 2),
-                "channel": "instagram",
-                "to": ctx["instagram_url"],
-                "content": msg.get("message", ""),
-                "status": "queued"
-            })
+            sequence.append(
+                {
+                    "day": msg.get("send_day", 2),
+                    "channel": "instagram",
+                    "to": ctx["instagram_url"],
+                    "content": msg.get("message", ""),
+                    "status": "queued",
+                }
+            )
 
     # Email
     if ctx.get("email"):
         for msg in extract_messages(emails, "body"):
-            sequence.append({
-                "day": msg.get("send_day", 3),
-                "channel": "email",
-                "to": ctx["email"],
-                "subject": msg.get("subject", ""),
-                "content": msg.get("body", ""),
-                "preview": msg.get("preview_text", ""),
-                "status": "queued"
-            })
+            sequence.append(
+                {
+                    "day": msg.get("send_day", 3),
+                    "channel": "email",
+                    "to": ctx["email"],
+                    "subject": msg.get("subject", ""),
+                    "content": msg.get("body", ""),
+                    "preview": msg.get("preview_text", ""),
+                    "status": "queued",
+                }
+            )
 
     # Facebook
     if ctx.get("on_facebook") and ctx.get("facebook_url"):
         for msg in extract_messages(facebook, "message"):
-            sequence.append({
-                "day": msg.get("send_day", 5),
-                "channel": "facebook",
-                "to": ctx["facebook_url"],
-                "content": msg.get("message", ""),
-                "status": "queued"
-            })
+            sequence.append(
+                {
+                    "day": msg.get("send_day", 5),
+                    "channel": "facebook",
+                    "to": ctx["facebook_url"],
+                    "content": msg.get("message", ""),
+                    "status": "queued",
+                }
+            )
 
     # Sort by send day
     sequence.sort(key=lambda x: x.get("day", 99))
@@ -700,18 +671,20 @@ def save_messages(lead_name: str, emails: dict, whatsapp: dict, sequence: list):
     with open(seq_path, "w", encoding="utf-8") as f:
         json.dump(sequence, f, indent=2, ensure_ascii=False)
 
-    return {
-        "email": email_path,
-        "whatsapp": wa_path,
-        "sequence": seq_path
-    }
+    return {"email": email_path, "whatsapp": wa_path, "sequence": seq_path}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PRINT PREVIEW — shows messages beautifully in terminal
 # ─────────────────────────────────────────────────────────────────────────────
-def print_preview(lead_name: str, ctx: dict, emails: dict,
-                  whatsapp: dict, instagram: dict, facebook: dict):
+def print_preview(
+    lead_name: str,
+    ctx: dict,
+    emails: dict,
+    whatsapp: dict,
+    instagram: dict,
+    facebook: dict,
+):
     print(f"\n{'═'*65}")
     print(f"  📬 MESSAGE PREVIEW — {lead_name}")
     print(f"{'═'*65}")
@@ -719,7 +692,9 @@ def print_preview(lead_name: str, ctx: dict, emails: dict,
     # Email 1
     e1 = emails.get("email_1") or {}
     if e1.get("subject"):
-        print(f"\n  {Symbol.EMAIL} EMAIL 1 (Day {e1.get('send_day', 3)}) → {ctx['email'] or 'No email'}")
+        print(
+            f"\n  {Symbol.EMAIL} EMAIL 1 (Day {e1.get('send_day', 3)}) → {ctx['email'] or 'No email'}"
+        )
         print(f"  Subject: {e1['subject']}")
         print(f"  Preview: {e1.get('preview_text', '')}")
         print(f"  ─────────────────────────────────────────────────")
@@ -732,21 +707,27 @@ def print_preview(lead_name: str, ctx: dict, emails: dict,
     # WhatsApp 1
     wa1 = whatsapp.get("wa_1") or {}
     if wa1.get("message"):
-        print(f"\n  {Symbol.WHATSAPP} WHATSAPP 1 (Day {wa1.get('send_day', 1)}) → {ctx['whatsapp'] or 'No number'}")
+        print(
+            f"\n  {Symbol.WHATSAPP} WHATSAPP 1 (Day {wa1.get('send_day', 1)}) → {ctx['whatsapp'] or 'No number'}"
+        )
         print(f"  ─────────────────────────────────────────────────")
         print(f"  {wa1['message']}")
 
     # Instagram 1
     ig1 = instagram.get("ig_1") or {}
     if ig1.get("message"):
-        print(f"\n  {Symbol.INSTAGRAM} INSTAGRAM DM 1 (Day {ig1.get('send_day', 2)}) → {ctx['instagram_url'] or 'No profile'}")
+        print(
+            f"\n  {Symbol.INSTAGRAM} INSTAGRAM DM 1 (Day {ig1.get('send_day', 2)}) → {ctx['instagram_url'] or 'No profile'}"
+        )
         print(f"  ─────────────────────────────────────────────────")
         print(f"  {ig1['message']}")
 
     # Facebook 1
     fb1 = facebook.get("fb_1") or {}
     if fb1.get("message"):
-        print(f"\n  {Symbol.FACEBOOK} FACEBOOK MSG 1 (Day {fb1.get('send_day', 5)}) → {ctx['facebook_url'] or 'No page'}")
+        print(
+            f"\n  {Symbol.FACEBOOK} FACEBOOK MSG 1 (Day {fb1.get('send_day', 5)}) → {ctx['facebook_url'] or 'No page'}"
+        )
         print(f"  ─────────────────────────────────────────────────")
         print(f"  {fb1['message']}")
 
@@ -758,7 +739,7 @@ def print_preview(lead_name: str, ctx: dict, emails: dict,
 # ─────────────────────────────────────────────────────────────────────────────
 def write_all_messages(
     enriched_file: str = "results/leads/enriched_leads.json",
-    audit_file: str = "results/audits/general_audit_results.json"
+    audit_file: str = "results/audits/general_audit_results.json",
 ):
     # Load enriched leads
     with open(enriched_file, "r", encoding="utf-8") as f:
@@ -783,7 +764,9 @@ def write_all_messages(
                 lead_name = item.get("lead")
                 for msg in item.get("sequence", []):
                     if msg.get("status") in ["approved", "sent"]:
-                        approved_messages[(lead_name, msg.get("channel"), msg.get("day"))] = msg
+                        approved_messages[
+                            (lead_name, msg.get("channel"), msg.get("day"))
+                        ] = msg
         except Exception as e:
             print(f"⚠️  Could not load existing master sequence: {e}")
 
@@ -795,12 +778,14 @@ def write_all_messages(
         "total": len(enriched_leads),
         "emails_written": 0,
         "whatsapp_written": 0,
-        "no_contacts": 0
+        "no_contacts": 0,
     }
 
     for i, lead in enumerate(enriched_leads, 1):
         name = lead["name"]
-        print(f"\n[{i}/{len(enriched_leads)}] ✍️  Writing/Updating messages for: {name}")
+        print(
+            f"\n[{i}/{len(enriched_leads)}] ✍️  Writing/Updating messages for: {name}"
+        )
 
         # Merge audit data into lead
         if name in audit_map:
@@ -811,11 +796,7 @@ def write_all_messages(
         ctx = build_lead_context(lead)
 
         # Check if we have any contact channels
-        has_any_contact = any([
-            ctx["email"],
-            ctx["whatsapp"],
-            ctx.get("all_phones")
-        ])
+        has_any_contact = any([ctx["email"], ctx["whatsapp"], ctx.get("all_phones")])
 
         if not has_any_contact:
             print(f"   {Symbol.WARN}  No contact channels found — skipping")
@@ -828,10 +809,10 @@ def write_all_messages(
         # Check for approved/sent messages
         emails = {}
         whatsapp = {}
-        
+
         approved_email = approved_messages.get((name, "email", 0))
         approved_wa = approved_messages.get((name, "whatsapp", 1))
-        
+
         # Write/preserve emails
         if approved_email:
             print(f"   ℹ️  Preserving approved/sent email_1")
@@ -841,12 +822,13 @@ def write_all_messages(
                 "body": approved_email.get("content"),
                 "preview_text": approved_email.get("preview"),
                 "send_day": 0,
-                "channel": "email"
+                "channel": "email",
             }
         elif ctx["email"]:
             print(f"   ✍️  Writing emails...")
             emails = write_emails(ctx)
-            if emails: stats["emails_written"] += 1
+            if emails:
+                stats["emails_written"] += 1
             time.sleep(random.uniform(2, 4))
 
         # Write/preserve WhatsApp
@@ -856,12 +838,13 @@ def write_all_messages(
                 "to": approved_wa.get("to"),
                 "message": approved_wa.get("content"),
                 "send_day": 1,
-                "channel": "whatsapp"
+                "channel": "whatsapp",
             }
         elif ctx["whatsapp"] or ctx.get("all_phones"):
             print(f"   ✍️  Writing WhatsApp messages...")
             whatsapp = write_whatsapp_messages(ctx)
-            if whatsapp: stats["whatsapp_written"] += 1
+            if whatsapp:
+                stats["whatsapp_written"] += 1
             time.sleep(random.uniform(2, 4))
 
         # Build unified send sequence
@@ -883,15 +866,17 @@ def write_all_messages(
         # Save everything
         paths = save_messages(name, emails, whatsapp, sequence)
 
-        all_sequences.append({
-            "lead": name,
-            "channels": {
-                "email": ctx["email"],
-                "whatsapp": ctx.get("all_phones") or ctx["whatsapp"]
-            },
-            "sequence": sequence,
-            "files": paths
-        })
+        all_sequences.append(
+            {
+                "lead": name,
+                "channels": {
+                    "email": ctx["email"],
+                    "whatsapp": ctx.get("all_phones") or ctx["whatsapp"],
+                },
+                "sequence": sequence,
+                "files": paths,
+            }
+        )
 
         print(f"   {Symbol.CHECK} Done — {len(sequence)} messages in sequence")
 

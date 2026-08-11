@@ -4,16 +4,23 @@ import re
 import time
 import random
 from datetime import datetime, timedelta
+
 try:
     from dotenv import load_dotenv
 except ImportError:
     import sys
+
     print("=" * 80)
     print("❌ IMPORT ERROR: 'python-dotenv' package is missing or conflicted.")
-    print("This usually happens when running the script using the global Python interpreter")
+    print(
+        "This usually happens when running the script using the global Python interpreter"
+    )
     print("instead of the project's virtual environment.")
     print("\n👉 Please run the script using the virtual environment:")
-    print("   venv\\Scripts\\python.exe outreach\\email_sender.py " + " ".join(sys.argv[1:]))
+    print(
+        "   venv\\Scripts\\python.exe outreach\\email_sender.py "
+        + " ".join(sys.argv[1:])
+    )
     print("\nOr activate the virtual environment first, or install requirements:")
     print("   pip install python-dotenv")
     print("=" * 80)
@@ -31,9 +38,10 @@ import requests
 load_dotenv()
 import sys
 import pathlib
+
 # Ensure project root is on sys.path so 'from outreach.x import ...' always works
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
-sys.stdout.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding="utf-8")
 
 os.makedirs("results/sent", exist_ok=True)
 os.makedirs("results/sent/emails", exist_ok=True)
@@ -80,9 +88,11 @@ def already_sent(log: dict, email: str, business_name: str, email_key: str) -> b
         except:
             entry_idx = 0
 
-        if (entry_business.lower().strip() == business_name.lower().strip() and
-            entry_idx >= curr_idx and
-            entry.get("success")):
+        if (
+            entry_business.lower().strip() == business_name.lower().strip()
+            and entry_idx >= curr_idx
+            and entry.get("success")
+        ):
             return True
 
     # 2. Check if this specific email address has had a successful delivery of this key or a LATER one
@@ -90,8 +100,11 @@ def already_sent(log: dict, email: str, business_name: str, email_key: str) -> b
         entry_to = entry.get("to") or ""
         email_to = email or ""
         entry_business = entry.get("business") or ""
-        
-        if entry_to.lower() == email_to.lower() and entry_business.lower().strip() == business_name.lower().strip():
+
+        if (
+            entry_to.lower() == email_to.lower()
+            and entry_business.lower().strip() == business_name.lower().strip()
+        ):
             entry_email_key = entry.get("email_key") or ""
             try:
                 entry_idx = int(entry_email_key.split("_")[1])
@@ -102,14 +115,14 @@ def already_sent(log: dict, email: str, business_name: str, email_key: str) -> b
     return False
 
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # EMAIL RENDERER — converts plain text to beautiful HTML
 # ─────────────────────────────────────────────────────────────────────────────
-def render_html_email(subject: str, body: str, business_name: str,
-                      sender_name: str, site_link: str = None) -> str:
+def render_html_email(
+    subject: str, body: str, business_name: str, sender_name: str, site_link: str = None
+) -> str:
     # Convert line breaks to paragraphs
-    paragraphs = [p.strip() for p in body.split('\n') if p.strip()]
+    paragraphs = [p.strip() for p in body.split("\n") if p.strip()]
     body_html = "".join(f"<p>{p}</p>" for p in paragraphs)
 
     site_section = ""
@@ -195,7 +208,7 @@ def send_via_brevo_smtp(
     from_name: str,
     from_email: str,
     reply_to: str = None,
-    attachment_path: str = None
+    attachment_path: str = None,
 ) -> dict:
     result = {"success": False, "method": "brevo_smtp", "error": None}
 
@@ -276,12 +289,9 @@ def send_via_brevo_api(
 
         response = requests.post(
             "https://api.brevo.com/v3/smtp/email",
-            headers={
-                "api-key": api_key,
-                "Content-Type": "application/json"
-            },
+            headers={"api-key": api_key, "Content-Type": "application/json"},
             json=payload,
-            timeout=15
+            timeout=15,
         )
 
         if response.status_code in [200, 201]:
@@ -303,9 +313,9 @@ def is_good_send_time(config: dict) -> tuple:
     day = now.strftime("%A")
     hour = now.hour
 
-    send_days = config["outreach"].get("send_days", [
-        "Monday", "Tuesday", "Wednesday", "Thursday"
-    ])
+    send_days = config["outreach"].get(
+        "send_days", ["Monday", "Tuesday", "Wednesday", "Thursday"]
+    )
     send_start = config["outreach"].get("send_hours", {}).get("start", 9)
     send_end = config["outreach"].get("send_hours", {}).get("end", 12)
 
@@ -315,7 +325,10 @@ def is_good_send_time(config: dict) -> tuple:
     if not is_good_day:
         return False, f"Today is {day} — not in send days {send_days}"
     if not is_good_hour:
-        return False, f"Current hour {hour}:00 — outside send window {send_start}:00-{send_end}:00"
+        return (
+            False,
+            f"Current hour {hour}:00 — outside send window {send_start}:00-{send_end}:00",
+        )
 
     return True, "Good time to send"
 
@@ -326,7 +339,8 @@ def is_good_send_time(config: dict) -> tuple:
 def get_todays_send_count(log: dict) -> int:
     today = datetime.now().strftime("%Y-%m-%d")
     return sum(
-        1 for e in log["emails"]
+        1
+        for e in log["emails"]
         if e.get("date", "").startswith(today) and e.get("success")
     )
 
@@ -338,7 +352,7 @@ def send_email_sequence(
     lead_name: str,
     force: bool = False,
     dry_run: bool = False,
-    ignore_timing: bool = False
+    ignore_timing: bool = False,
 ) -> dict:
     """
     Send the appropriate email in the sequence for a specific lead.
@@ -352,12 +366,7 @@ def send_email_sequence(
     reply_to = config["brevo"].get("reply_to", from_email)
     daily_limit = config["outreach"]["daily_email_limit"]
 
-    result = {
-        "lead": lead_name,
-        "action": None,
-        "success": False,
-        "reason": None
-    }
+    result = {"lead": lead_name, "action": None, "success": False, "reason": None}
 
     # Check timing
     if not force and not ignore_timing:
@@ -402,7 +411,7 @@ def send_email_sequence(
     contact_email = lead_data.get("contact_email")
     if contact_email:
         emails_to_try.append(contact_email)
-    
+
     all_emails = lead_data.get("all_emails", [])
     if isinstance(all_emails, list):
         for e in all_emails:
@@ -437,17 +446,19 @@ def send_email_sequence(
     for key in email_order:
         if key not in emails:
             continue
-        
+
         # Check sequence file status first
         email_idx = int(key.split("_")[1]) - 1
         if email_idx < len(email_seq_items):
             status = email_seq_items[email_idx].get("status", "queued")
             if status == "sent":
                 continue  # Cleanly bypass if sequence indicates this email has already been sent
-        
+
         # Check which of the emails have not been sent yet for this key
-        key_unsent = [e for e in emails_to_try if not already_sent(log, e, lead_name, key)]
-        
+        key_unsent = [
+            e for e in emails_to_try if not already_sent(log, e, lead_name, key)
+        ]
+
         if key_unsent:
             # Check human approval if required
             if require_human and not force:
@@ -455,7 +466,9 @@ def send_email_sequence(
                 if email_idx < len(email_seq_items):
                     status = email_seq_items[email_idx].get("status", "queued")
                     if status != "approved":
-                        result["reason"] = f"Awaiting human approval (status is '{status}')"
+                        result["reason"] = (
+                            f"Awaiting human approval (status is '{status}')"
+                        )
                         result["action"] = "skipped_awaiting_approval"
                         return result
 
@@ -471,7 +484,9 @@ def send_email_sequence(
                 days_since = (datetime.now() - last_sent_dt).days
                 min_days = {"email_1": 0, "email_2": 4, "email_3": 7}
                 if days_since < min_days.get(key, 0):
-                    result["reason"] = f"Too soon — {days_since} days since last email (need {min_days[key]})"
+                    result["reason"] = (
+                        f"Too soon — {days_since} days since last email (need {min_days[key]})"
+                    )
                     result["action"] = "skipped_too_soon"
                     return result
 
@@ -489,6 +504,7 @@ def send_email_sequence(
     body_text = email_to_send.get("body", "")
 
     from outreach.message_writer import clean_message_content
+
     body_text = clean_message_content(body_text, default_option=2)
 
     if not subject or not body_text:
@@ -499,7 +515,7 @@ def send_email_sequence(
     # Check if there's a sample site to include
     site_link = None
     if email_key in ["email_2", "email_3"]:
-        site_safe_name = re.sub(r'[^a-z0-9]', '-', lead_name.lower()).strip('-')
+        site_safe_name = re.sub(r"[^a-z0-9]", "-", lead_name.lower()).strip("-")
         site_path = f"results/sites/{site_safe_name}.html"
         if os.path.exists(site_path):
             site_link = f"[SAMPLE SITE: {site_path}]"
@@ -510,7 +526,7 @@ def send_email_sequence(
         body=body_text,
         business_name=lead_name,
         sender_name=from_name,
-        site_link=site_link
+        site_link=site_link,
     )
 
     any_success = False
@@ -538,11 +554,15 @@ def send_email_sequence(
         # Human-like random delay before sending
         if idx > 0 or sends_attempted > 0:
             delay = random.uniform(20, 60)
-            print(f"   ⏳ Waiting {delay:.0f}s before sending to next address {to_email} (human-like)...")
+            print(
+                f"   ⏳ Waiting {delay:.0f}s before sending to next address {to_email} (human-like)..."
+            )
             time.sleep(delay)
         else:
             delay = random.uniform(30, 120)
-            print(f"   ⏳ Waiting {delay:.0f}s before sending to {to_email} (human-like)...")
+            print(
+                f"   ⏳ Waiting {delay:.0f}s before sending to {to_email} (human-like)..."
+            )
             time.sleep(delay)
 
         print(f"   📧 Sending {email_key} to {to_email}...")
@@ -553,7 +573,7 @@ def send_email_sequence(
             body_html=body_html,
             from_name=from_name,
             from_email=from_email,
-            reply_to=reply_to
+            reply_to=reply_to,
         )
 
         if not send_result["success"]:
@@ -564,7 +584,7 @@ def send_email_sequence(
                 subject=subject,
                 body_html=body_html,
                 from_name=from_name,
-                from_email=from_email
+                from_email=from_email,
             )
 
         # Log the send
@@ -577,7 +597,7 @@ def send_email_sequence(
             "date": datetime.now().isoformat(),
             "success": send_result["success"],
             "method": send_result["method"],
-            "error": send_result.get("error")
+            "error": send_result.get("error"),
         }
         log["emails"].append(log_entry)
         sends_attempted += 1
@@ -598,7 +618,9 @@ def send_email_sequence(
     if sends_attempted == 0:
         result["action"] = "skipped_limit"
         result["success"] = False
-        result["reason"] = f"Daily limit reached ({get_todays_send_count(log)}/{daily_limit})"
+        result["reason"] = (
+            f"Daily limit reached ({get_todays_send_count(log)}/{daily_limit})"
+        )
         return result
 
     if sends_attempted > 0:
@@ -621,7 +643,7 @@ def send_email_sequence(
                         curr_idx += 1
                 with open(seq_path, "w", encoding="utf-8") as f:
                     json.dump(seq_data, f, indent=2, ensure_ascii=False)
-            
+
             # 2. Update master sequence file
             master_seq_path = "results/messages/sequences/master_sequence.json"
             if os.path.exists(master_seq_path):
@@ -651,12 +673,18 @@ def send_email_sequence(
 # ─────────────────────────────────────────────────────────────────────────────
 # BATCH SENDER — session-based: 2 per session, 30-60 min between sessions
 # ─────────────────────────────────────────────────────────────────────────────
-def send_all_emails(dry_run: bool = False, force: bool = False, ignore_timing: bool = False):
+def send_all_emails(
+    dry_run: bool = False, force: bool = False, ignore_timing: bool = False
+):
     config = load_config()
     daily_limit = config["outreach"]["daily_email_limit"]
-    session_size = daily_limit if (force or ignore_timing) else 2          # emails per session
-    session_wait_min = 0 if (force or ignore_timing) else 30 * 60   # 30 minutes in seconds
-    session_wait_max = 0 if (force or ignore_timing) else 60 * 60   # 60 minutes in seconds
+    session_size = daily_limit if (force or ignore_timing) else 2  # emails per session
+    session_wait_min = (
+        0 if (force or ignore_timing) else 30 * 60
+    )  # 30 minutes in seconds
+    session_wait_max = (
+        0 if (force or ignore_timing) else 60 * 60
+    )  # 60 minutes in seconds
 
     # Load all leads with emails
     enriched_file = "results/leads/enriched_leads.json"
@@ -687,7 +715,7 @@ def send_all_emails(dry_run: bool = False, force: bool = False, ignore_timing: b
             return
 
     stats = {"sent": 0, "failed": 0, "skipped": 0, "complete": 0}
-    lead_index = 0        # tracks position in lead list across sessions
+    lead_index = 0  # tracks position in lead list across sessions
     session_num = 0
 
     while lead_index < len(leads_with_email):
@@ -711,7 +739,9 @@ def send_all_emails(dry_run: bool = False, force: bool = False, ignore_timing: b
         remaining_today = daily_limit - todays_count
         this_session = min(session_size, remaining_today)
         print(f"\n{'─'*55}")
-        print(f"📬 Session {session_num}  |  Sent today: {todays_count}/{daily_limit}  |  Sending up to {this_session} now")
+        print(
+            f"📬 Session {session_num}  |  Sent today: {todays_count}/{daily_limit}  |  Sending up to {this_session} now"
+        )
         print(f"{'─'*55}")
 
         sent_this_session = 0
@@ -727,7 +757,7 @@ def send_all_emails(dry_run: bool = False, force: bool = False, ignore_timing: b
                 lead_name=name,
                 force=force,
                 dry_run=dry_run,
-                ignore_timing=ignore_timing
+                ignore_timing=ignore_timing,
             )
 
             if result["success"]:
@@ -748,7 +778,11 @@ def send_all_emails(dry_run: bool = False, force: bool = False, ignore_timing: b
                 stats["failed"] += 1
 
             # Short gap between individual sends within a session (human-like)
-            if result["success"] and sent_this_session < this_session and lead_index < len(leads_with_email):
+            if (
+                result["success"]
+                and sent_this_session < this_session
+                and lead_index < len(leads_with_email)
+            ):
                 gap = random.uniform(20, 60)
                 print(f"   ⏳ {gap:.0f}s before next in session...")
                 if not dry_run:
@@ -766,8 +800,12 @@ def send_all_emails(dry_run: bool = False, force: bool = False, ignore_timing: b
 
             wait_secs = random.uniform(session_wait_min, session_wait_max)
             wait_mins = wait_secs / 60
-            resume_at = (datetime.now() + timedelta(seconds=wait_secs)).strftime("%I:%M %p")
-            print(f"\n⏳ Waiting {wait_mins:.0f} min before next session (resumes ~{resume_at})...")
+            resume_at = (datetime.now() + timedelta(seconds=wait_secs)).strftime(
+                "%I:%M %p"
+            )
+            print(
+                f"\n⏳ Waiting {wait_mins:.0f} min before next session (resumes ~{resume_at})..."
+            )
             time.sleep(wait_secs)
         elif dry_run and lead_index < len(leads_with_email):
             # In dry-run, just continue without waiting
@@ -791,6 +829,7 @@ def send_all_emails(dry_run: bool = False, force: bool = False, ignore_timing: b
 # ─────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import sys
+
     dry_run = "--dry-run" in sys.argv
     force = "--force" in sys.argv
     ignore_timing = "--ignore-timing" in sys.argv

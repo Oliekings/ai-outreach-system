@@ -9,48 +9,17 @@ from groq import Groq
 
 load_dotenv()
 
-class Symbol:
-    """Clean logging symbols that work across all terminals"""
-    USE_EMOJI = False # Set to True if your terminal supports UTF-8 emojis
-    
-    LIST = "📋" if USE_EMOJI else "[LIST]"
-    LEAD = "💎" if USE_EMOJI else "[LEAD]"
-    SEARCH = "🔍" if USE_EMOJI else "[SEARCH]"
-    STOP = "🛑" if USE_EMOJI else "[STOP]"
-    CHECK = "✅" if USE_EMOJI else "[OK]"
-    WORLD = "🌍" if USE_EMOJI else "[WORLD]"
-    WARN = "⚠️" if USE_EMOJI else "[WARN]"
-    AI = "🧠" if USE_EMOJI else "[AI]"
-    VIBE = "🎨" if USE_EMOJI else "[VIBE]"
-    TONE = "🗣️" if USE_EMOJI else "[TONE]"
-    PRIDE = "🆕" if USE_EMOJI else "[PRIDE]"
-    TARGET = "🎯" if USE_EMOJI else "[TARGET]"
-    TIME = "⏰" if USE_EMOJI else "[TIME]"
-    NURTURE = "🌱" if USE_EMOJI else "[NURTURE]"
-    REFERRAL = "🤝" if USE_EMOJI else "[REFERRAL]"
-    EMAIL = "📧" if USE_EMOJI else "[EMAIL]"
-    PHONE = "📞" if USE_EMOJI else "[PHONE]"
-    WHATSAPP = "💬" if USE_EMOJI else "[WHATSAPP]"
-    SOCIAL = "📱" if USE_EMOJI else "[SOCIAL]"
-    INSTAGRAM = "📸" if USE_EMOJI else "[INSTAGRAM]"
-    FACEBOOK = "📘" if USE_EMOJI else "[FACEBOOK]"
-    RETRY = "🔄" if USE_EMOJI else "[RETRY]"
-    BOT = "🛡️" if USE_EMOJI else "[BOT-WALL]"
-    WAIT = "⏳" if USE_EMOJI else "[WAIT]"
-    PITCH = "💡" if USE_EMOJI else "[PITCH]"
-    PAGE = "📄" if USE_EMOJI else "[PAGE]"
-    MAPS = "📍" if USE_EMOJI else "[MAPS]"
-    ERROR = "❌" if USE_EMOJI else "[ERROR]"
-    HUMAN = "🧑" if USE_EMOJI else "[USER]"
-
-sys.stdout.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding="utf-8")
 
 
 def get_ai_response(prompt: str, max_tokens: int = 2000) -> str:
     from utils.ai_client import ai_response
+
     return ai_response(prompt, task="audit", max_tokens=max_tokens)
 
+
 from utils.ai_client import safe_json
+from utils.symbols import Symbol
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -131,9 +100,13 @@ Return ONLY valid JSON:
         "kpis": {},
         "critical_issues": ["Audit system unavailable — check manually"],
         "opportunities": [],
-        "today_priorities": ["Run reply_monitor.py", "Check leads pipeline", "Review messages"],
+        "today_priorities": [
+            "Run reply_monitor.py",
+            "Check leads pipeline",
+            "Review messages",
+        ],
         "ceo_message": "System audit unavailable. Run manually.",
-        "hire_signal": "no"
+        "hire_signal": "no",
     }
 
 
@@ -145,8 +118,11 @@ def generate_audit_report(audit_result: dict, state: dict) -> str:
     kpis = audit_result.get("kpis", {})
 
     health_icon = {
-        "excellent": Symbol.CHECK, "good": Symbol.CHECK,
-        "fair": Symbol.WARN, "poor": Symbol.WARN, "critical": Symbol.STOP
+        "excellent": Symbol.CHECK,
+        "good": Symbol.CHECK,
+        "fair": Symbol.WARN,
+        "poor": Symbol.WARN,
+        "critical": Symbol.STOP,
     }.get(health, "[?]")
 
     line = "-" * 56

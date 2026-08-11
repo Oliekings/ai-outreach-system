@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 import sys
 import pathlib
 
-sys.stdout.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding="utf-8")
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from utils.ai_client import ai_response as get_ai_response, safe_json
@@ -22,25 +22,59 @@ os.makedirs("results/replies", exist_ok=True)
 os.makedirs("results/logs", exist_ok=True)
 
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # SYSTEM EMAIL FILTER — skip emails that are NOT from leads
 # ─────────────────────────────────────────────────────────────────────────────
 IGNORE_SENDERS = {
-    "noreply", "no-reply", "mailer-daemon", "postmaster",
-    "notifications", "notify", "alert", "donotreply",
-    "newsletter", "marketing", "billing", "feedback",
-    "support", "info", "security", "accounts", "team",
-    "updates", "digest", "automated", "system",
+    "noreply",
+    "no-reply",
+    "mailer-daemon",
+    "postmaster",
+    "notifications",
+    "notify",
+    "alert",
+    "donotreply",
+    "newsletter",
+    "marketing",
+    "billing",
+    "feedback",
+    "support",
+    "info",
+    "security",
+    "accounts",
+    "team",
+    "updates",
+    "digest",
+    "automated",
+    "system",
 }
 IGNORE_DOMAINS = {
-    "google.com", "youtube.com", "facebook.com", "instagram.com",
-    "snapchat.com", "telegram.org", "twitter.com", "x.com",
-    "linkedin.com", "amazon.com", "apple.com", "microsoft.com",
-    "brevo.com", "github.com", "paypal.com", "netflix.com",
-    "whatsapp.com", "tiktok.com", "pinterest.com", "reddit.com",
-    "zoom.us", "dropbox.com", "spotify.com", "uber.com",
+    "google.com",
+    "youtube.com",
+    "facebook.com",
+    "instagram.com",
+    "snapchat.com",
+    "telegram.org",
+    "twitter.com",
+    "x.com",
+    "linkedin.com",
+    "amazon.com",
+    "apple.com",
+    "microsoft.com",
+    "brevo.com",
+    "github.com",
+    "paypal.com",
+    "netflix.com",
+    "whatsapp.com",
+    "tiktok.com",
+    "pinterest.com",
+    "reddit.com",
+    "zoom.us",
+    "dropbox.com",
+    "spotify.com",
+    "uber.com",
 }
+
 
 def is_system_email(from_email: str) -> bool:
     """Check if an email is from a system/notification sender (not a lead)."""
@@ -79,8 +113,8 @@ def load_reply_log() -> dict:
             "not_interested": 0,
             "question": 0,
             "out_of_office": 0,
-            "total": 0
-        }
+            "total": 0,
+        },
     }
 
 
@@ -169,44 +203,88 @@ Intent definitions:
 
     # Fallback classification using keywords
     text_lower = reply_text.lower()
-    if any(w in text_lower for w in [
-        "interested", "tell me more", "how much", "price",
-        "cost", "when can", "let's talk", "please send",
-        "yes", "sounds good", "would like"
-    ]):
-        return {"intent": "interested", "confidence": "medium",
-                "sentiment": "positive", "summary": "Shows interest"}
+    if any(
+        w in text_lower
+        for w in [
+            "interested",
+            "tell me more",
+            "how much",
+            "price",
+            "cost",
+            "when can",
+            "let's talk",
+            "please send",
+            "yes",
+            "sounds good",
+            "would like",
+        ]
+    ):
+        return {
+            "intent": "interested",
+            "confidence": "medium",
+            "sentiment": "positive",
+            "summary": "Shows interest",
+        }
 
-    if any(w in text_lower for w in [
-        "not interested", "no thank", "already have",
-        "don't need", "remove", "unsubscribe", "stop"
-    ]):
-        return {"intent": "not_interested", "confidence": "medium",
-                "sentiment": "negative", "summary": "Not interested"}
+    if any(
+        w in text_lower
+        for w in [
+            "not interested",
+            "no thank",
+            "already have",
+            "don't need",
+            "remove",
+            "unsubscribe",
+            "stop",
+        ]
+    ):
+        return {
+            "intent": "not_interested",
+            "confidence": "medium",
+            "sentiment": "negative",
+            "summary": "Not interested",
+        }
 
-    if any(w in text_lower for w in [
-        "out of office", "away", "vacation", "holiday",
-        "will be back", "auto", "automatic"
-    ]):
-        return {"intent": "out_of_office", "confidence": "high",
-                "sentiment": "neutral", "summary": "Out of office"}
+    if any(
+        w in text_lower
+        for w in [
+            "out of office",
+            "away",
+            "vacation",
+            "holiday",
+            "will be back",
+            "auto",
+            "automatic",
+        ]
+    ):
+        return {
+            "intent": "out_of_office",
+            "confidence": "high",
+            "sentiment": "neutral",
+            "summary": "Out of office",
+        }
 
     if "?" in reply_text:
-        return {"intent": "question", "confidence": "medium",
-                "sentiment": "neutral", "summary": "Asked a question"}
+        return {
+            "intent": "question",
+            "confidence": "medium",
+            "sentiment": "neutral",
+            "summary": "Asked a question",
+        }
 
-    return {"intent": "other", "confidence": "low",
-            "sentiment": "neutral", "summary": "Unclear intent"}
+    return {
+        "intent": "other",
+        "confidence": "low",
+        "sentiment": "neutral",
+        "summary": "Unclear intent",
+    }
 
 
 # —————————————————————————————————————————————————————————————————————————————
 # REPLY DRAFTER
 # —————————————————————————————————————————————————————————————————————————————
 def draft_reply(
-    classification: dict,
-    lead: dict,
-    original_reply: str,
-    config: dict
+    classification: dict, lead: dict, original_reply: str, config: dict
 ) -> dict:
     """Draft the perfect response based on classification"""
 
@@ -223,7 +301,7 @@ def draft_reply(
     city = lead.get("city", "Nigeria")
 
     # Site link if built
-    safe_name = re.sub(r'[^a-z0-9]', '-', business_name.lower()).strip('-')
+    safe_name = re.sub(r"[^a-z0-9]", "-", business_name.lower()).strip("-")
     site_path = f"results/sites/{safe_name}.html"
     has_site = os.path.exists(site_path)
 
@@ -333,7 +411,7 @@ Return ONLY valid JSON:
             "body": None,
             "priority": "low",
             "follow_up_in_days": 7,
-            "action": "wait_for_return"
+            "action": "wait_for_return",
         }
 
     else:
@@ -376,7 +454,7 @@ Return ONLY valid JSON:
         "body": f"{greeting}\n\nThank you for getting back to me. I'll follow up shortly.\n\nBest,\n{from_name}",
         "priority": "medium",
         "follow_up_in_days": 3,
-        "action": "send_reply"
+        "action": "send_reply",
     }
 
 
@@ -404,7 +482,7 @@ def fetch_email_replies(since_days: int = 3) -> list:
 
         # Search for emails since N days ago
         since_date = (datetime.now() - timedelta(days=since_days)).strftime("%d-%b-%Y")
-        status, messages = mail.search(None, f'SINCE {since_date}')
+        status, messages = mail.search(None, f"SINCE {since_date}")
 
         if status != "OK":
             print("   âš ï¸  Could not search inbox")
@@ -434,7 +512,7 @@ def fetch_email_replies(since_days: int = 3) -> list:
 
                 # Get sender
                 from_raw = msg.get("From", "")
-                from_match = re.search(r'[\w.+-]+@[\w.+-]+', from_raw)
+                from_match = re.search(r"[\w.+-]+@[\w.+-]+", from_raw)
                 from_email = from_match.group(0) if from_match else from_raw
 
                 # Skip our own emails
@@ -453,7 +531,7 @@ def fetch_email_replies(since_days: int = 3) -> list:
                             try:
                                 body = part.get_payload(decode=True).decode(
                                     part.get_content_charset() or "utf-8",
-                                    errors="ignore"
+                                    errors="ignore",
                                 )
                                 break
                             except:
@@ -461,8 +539,7 @@ def fetch_email_replies(since_days: int = 3) -> list:
                 else:
                     try:
                         body = msg.get_payload(decode=True).decode(
-                            msg.get_content_charset() or "utf-8",
-                            errors="ignore"
+                            msg.get_content_charset() or "utf-8", errors="ignore"
                         )
                     except:
                         body = str(msg.get_payload())
@@ -471,15 +548,17 @@ def fetch_email_replies(since_days: int = 3) -> list:
                 message_id = msg.get("Message-ID", str(email_id))
                 date_str = msg.get("Date", datetime.now().isoformat())
 
-                replies.append({
-                    "message_id": message_id,
-                    "from_email": from_email,
-                    "from_name": from_raw.split("<")[0].strip().strip('"'),
-                    "subject": subject,
-                    "body": body[:3000],
-                    "date": date_str,
-                    "channel": "email"
-                })
+                replies.append(
+                    {
+                        "message_id": message_id,
+                        "from_email": from_email,
+                        "from_name": from_raw.split("<")[0].strip().strip('"'),
+                        "subject": subject,
+                        "body": body[:3000],
+                        "date": date_str,
+                        "channel": "email",
+                    }
+                )
 
             except Exception as e:
                 print(f"   âš ï¸  Error reading email: {str(e)[:60]}")
@@ -513,9 +592,12 @@ def process_replies(replies: list, dry_run: bool = False) -> dict:
             all_leads = json.load(f)
 
     stats = {
-        "processed": 0, "interested": 0,
-        "not_interested": 0, "questions": 0,
-        "out_of_office": 0, "other": 0
+        "processed": 0,
+        "interested": 0,
+        "not_interested": 0,
+        "questions": 0,
+        "out_of_office": 0,
+        "other": 0,
     }
 
     processed_replies = []
@@ -543,7 +625,9 @@ def process_replies(replies: list, dry_run: bool = False) -> dict:
             lead = find_lead_by_name_in_subject(subject, all_leads)
 
         if not lead:
-            print(f"   ⏭️  No matching lead for {from_email} — skipping (not outreach-related)")
+            print(
+                f"   ⏭️  No matching lead for {from_email} — skipping (not outreach-related)"
+            )
             continue
 
         business_name = lead.get("name", from_email)
@@ -573,8 +657,12 @@ def process_replies(replies: list, dry_run: bool = False) -> dict:
             "date_processed": datetime.now().isoformat(),
             "classification": classification,
             "drafted_reply": drafted,
-            "status": "pending_review" if config.get("quality", {}).get("require_human_review") else "ready_to_send",
-            "action_taken": None
+            "status": (
+                "pending_review"
+                if config.get("quality", {}).get("require_human_review")
+                else "ready_to_send"
+            ),
+            "action_taken": None,
         }
 
         # Update stats
@@ -647,7 +735,8 @@ def send_queued_replies(dry_run: bool = False):
     smtp_pass = os.getenv("BREVO_SMTP_PASS")
 
     ready_replies = [
-        r for r in log["replies"]
+        r
+        for r in log["replies"]
         if r.get("status") == "ready_to_send"
         and r.get("drafted_reply", {}).get("body")
         and not r.get("action_taken")
@@ -742,7 +831,8 @@ def run_reply_monitor(dry_run: bool = False, send_replies: bool = False):
     # Show interested leads summary
     log = load_reply_log()
     interested = [
-        r for r in log["replies"]
+        r
+        for r in log["replies"]
         if r.get("classification", {}).get("intent") == "interested"
         and not r.get("action_taken")
     ]
@@ -761,6 +851,7 @@ def run_reply_monitor(dry_run: bool = False, send_replies: bool = False):
 def find_lead_by_phone(phone: str, leads: list) -> dict:
     """Find which lead matches this phone number"""
     from outreach.whatsapp_sender import format_wa_number
+
     if not phone:
         return {}
     target_fmt = format_wa_number(phone)
@@ -779,14 +870,14 @@ def find_lead_by_phone(phone: str, leads: list) -> dict:
                 lead_phones.extend(lead.get("all_phones"))
             else:
                 lead_phones.append(lead.get("all_phones"))
-        
+
         fb = lead.get("facebook")
         if isinstance(fb, dict) and fb.get("phone"):
             lead_phones.append(fb.get("phone"))
         ig = lead.get("instagram")
         if isinstance(ig, dict) and ig.get("phone"):
             lead_phones.append(ig.get("phone"))
-            
+
         for lp in lead_phones:
             if format_wa_number(str(lp)) == target_fmt:
                 return lead
@@ -834,7 +925,9 @@ def get_recent_outreach_numbers() -> list:
         return []
 
 
-async def extract_messages_from_chat(page, contact_name: str, phone_num: str = None) -> list:
+async def extract_messages_from_chat(
+    page, contact_name: str, phone_num: str = None
+) -> list:
     """Extract consecutive incoming messages from the end of the chat window"""
     import hashlib
     import asyncio
@@ -843,7 +936,7 @@ async def extract_messages_from_chat(page, contact_name: str, phone_num: str = N
     # Wait up to 5 seconds for message bubbles to render
     bubbles = []
     for _ in range(10):
-        bubbles = await page.query_selector_all('div.message-in, div.message-out')
+        bubbles = await page.query_selector_all("div.message-in, div.message-out")
         if bubbles:
             break
         await asyncio.sleep(0.5)
@@ -868,7 +961,7 @@ async def extract_messages_from_chat(page, contact_name: str, phone_num: str = N
     # Extract text from the consecutive incoming bubbles
     text_parts = []
     for bubble in consecutive_incoming:
-        text_el = await bubble.query_selector('span.selectable-text, div.copyable-text')
+        text_el = await bubble.query_selector("span.selectable-text, div.copyable-text")
         if text_el:
             txt = await text_el.inner_text()
             if txt:
@@ -878,10 +971,10 @@ async def extract_messages_from_chat(page, contact_name: str, phone_num: str = N
         return []
 
     reply_text = "\n".join(text_parts)
-    print(f"   📩 Found WhatsApp reply from {contact_name}: \"{reply_text[:100]}...\"")
+    print(f'   📩 Found WhatsApp reply from {contact_name}: "{reply_text[:100]}..."')
 
     # Determine unique message ID using a hash of the text
-    text_hash = hashlib.md5(reply_text.encode('utf-8')).hexdigest()[:12]
+    text_hash = hashlib.md5(reply_text.encode("utf-8")).hexdigest()[:12]
     message_id = f"wa_{contact_name.replace(' ', '_')}_{text_hash}"
 
     # Determine from_email representation (store the phone number or fallback to contact name)
@@ -889,24 +982,30 @@ async def extract_messages_from_chat(page, contact_name: str, phone_num: str = N
         raw_phone = find_phone_by_lead_name(contact_name)
         if raw_phone:
             phone_num = format_wa_number(raw_phone)
-            
+
     from_email = phone_num if phone_num else contact_name
 
-    return [{
-        "message_id": message_id,
-        "from_email": from_email,
-        "from_name": contact_name,
-        "subject": "WhatsApp Message",
-        "body": reply_text,
-        "date": datetime.now().isoformat(),
-        "channel": "whatsapp"
-    }]
+    return [
+        {
+            "message_id": message_id,
+            "from_email": from_email,
+            "from_name": contact_name,
+            "subject": "WhatsApp Message",
+            "body": reply_text,
+            "date": datetime.now().isoformat(),
+            "channel": "whatsapp",
+        }
+    ]
 
 
 async def async_fetch_whatsapp_replies() -> list:
     """Fetch unread WhatsApp replies using Playwright"""
     from playwright.async_api import async_playwright
-    from outreach.whatsapp_sender import ensure_wa_session, human_pause, format_wa_number
+    from outreach.whatsapp_sender import (
+        ensure_wa_session,
+        human_pause,
+        format_wa_number,
+    )
 
     replies = []
     user_data_dir = os.path.join(os.getcwd(), ".wa_session")
@@ -926,7 +1025,9 @@ async def async_fetch_whatsapp_replies() -> list:
                 no_viewport=True,
             )
         except Exception as e:
-            print(f"   ⚠️ Could not launch Chrome channel: {e}. Falling back to default Chromium.")
+            print(
+                f"   ⚠️ Could not launch Chrome channel: {e}. Falling back to default Chromium."
+            )
             context = await p.chromium.launch_persistent_context(
                 user_data_dir=user_data_dir,
                 headless=False,
@@ -952,14 +1053,16 @@ async def async_fetch_whatsapp_replies() -> list:
         chat_items = await page.query_selector_all('div[data-testid="chat-list-item"]')
         chats_to_check = []
         for item in chat_items:
-            unread_badge = await item.query_selector('span[aria-label*="unread"], span[aria-label*="Unread"], [data-testid="icon-unread-count"]')
+            unread_badge = await item.query_selector(
+                'span[aria-label*="unread"], span[aria-label*="Unread"], [data-testid="icon-unread-count"]'
+            )
             title_el = await item.query_selector('span[title], div[dir="auto"]')
             title = await title_el.get_attribute("title") if title_el else None
             if not title and title_el:
                 title = await title_el.text_content()
             if title:
                 title = title.strip()
-            
+
             if unread_badge and title:
                 chats_to_check.append((item, title))
 
@@ -980,7 +1083,9 @@ async def async_fetch_whatsapp_replies() -> list:
 
         # 2. Safety check: Check the last 15 active outreach chats from logs
         recent_contacts = get_recent_outreach_numbers()
-        print(f"   🔄 Safety Check: Checking {len(recent_contacts)} recent outreach chats...")
+        print(
+            f"   🔄 Safety Check: Checking {len(recent_contacts)} recent outreach chats..."
+        )
         for business, number in recent_contacts:
             # Skip if we already got a reply for this business in this run
             if any(r["from_name"] == business for r in replies):
@@ -991,13 +1096,15 @@ async def async_fetch_whatsapp_replies() -> list:
                 continue
 
             try:
-                clean_num = formatted_num.replace('+', '')
+                clean_num = formatted_num.replace("+", "")
                 chat_url = f"https://web.whatsapp.com/send?phone={clean_num}"
                 print(f"   🔍 Inspecting chat for {business} ({formatted_num})...")
                 await page.goto(chat_url, timeout=20000, wait_until="domcontentloaded")
                 await human_pause(4.0, 6.0)
 
-                chat_replies = await extract_messages_from_chat(page, business, phone_num=formatted_num)
+                chat_replies = await extract_messages_from_chat(
+                    page, business, phone_num=formatted_num
+                )
                 if chat_replies:
                     replies.extend(chat_replies)
             except Exception as e:
@@ -1021,7 +1128,12 @@ def fetch_whatsapp_replies() -> list:
 async def async_send_whatsapp_replies(ready_replies: list) -> list:
     """Send approved WhatsApp replies using Playwright"""
     from playwright.async_api import async_playwright
-    from outreach.whatsapp_sender import ensure_wa_session, send_whatsapp_message, format_wa_number, human_pause
+    from outreach.whatsapp_sender import (
+        ensure_wa_session,
+        send_whatsapp_message,
+        format_wa_number,
+        human_pause,
+    )
 
     user_data_dir = os.path.join(os.getcwd(), ".wa_session")
     os.makedirs(user_data_dir, exist_ok=True)
@@ -1040,7 +1152,9 @@ async def async_send_whatsapp_replies(ready_replies: list) -> list:
                 no_viewport=True,
             )
         except Exception as e:
-            print(f"   ⚠️ Could not launch Chrome channel: {e}. Falling back to default Chromium.")
+            print(
+                f"   ⚠️ Could not launch Chrome channel: {e}. Falling back to default Chromium."
+            )
             context = await p.chromium.launch_persistent_context(
                 user_data_dir=user_data_dir,
                 headless=False,
@@ -1073,10 +1187,7 @@ async def async_send_whatsapp_replies(ready_replies: list) -> list:
             print(f"\n   📤 Replying via WhatsApp to: {business} ({to_phone})")
 
             send_result = await send_whatsapp_message(
-                page=page,
-                number=to_phone,
-                message=body,
-                business_name=business
+                page=page, number=to_phone, message=body, business_name=business
             )
 
             if send_result["success"]:
@@ -1099,6 +1210,7 @@ async def async_send_whatsapp_replies(ready_replies: list) -> list:
 def log_wa_reply_sent(business: str, number: str, message: str):
     """Log a sent WhatsApp reply to whatsapp_log.json"""
     from outreach.whatsapp_sender import format_wa_number
+
     log_path = "results/logs/whatsapp_log.json"
     log = {"messages": [], "stats": {"sent": 0, "failed": 0, "skipped": 0}}
     if os.path.exists(log_path):
@@ -1117,7 +1229,7 @@ def log_wa_reply_sent(business: str, number: str, message: str):
         "message": message,
         "date": datetime.now().isoformat(),
         "success": True,
-        "error": None
+        "error": None,
     }
     log["messages"].append(log_entry)
     log["stats"]["sent"] = log["stats"].get("sent", 0) + 1
@@ -1128,6 +1240,7 @@ def log_wa_reply_sent(business: str, number: str, message: str):
 
 if __name__ == "__main__":
     import sys
+
     dry_run = "--dry-run" in sys.argv
     send = "--send" in sys.argv
     run_reply_monitor(dry_run=dry_run, send_replies=send)
