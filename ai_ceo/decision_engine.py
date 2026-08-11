@@ -496,11 +496,19 @@ def execute_decisions(decisions_result: dict, dry_run: bool = False) -> list:
                     parts = command.split()
                     if parts and parts[0] in ("python", "python3"):
                         parts[0] = sys.executable
+                    env = os.environ.copy()
+                    cwd = os.getcwd()
+                    if "PYTHONPATH" in env:
+                        env["PYTHONPATH"] = cwd + os.pathsep + env["PYTHONPATH"]
+                    else:
+                        env["PYTHONPATH"] = cwd
                     result = subprocess.run(
                         parts,
                         capture_output=True,
                         text=True,
                         encoding='utf-8',
+                        cwd=cwd,
+                        env=env,
                         timeout=300
                     )
                     success = result.returncode == 0
