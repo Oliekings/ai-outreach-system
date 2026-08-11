@@ -69,7 +69,6 @@ def get_ai_response(prompt: str, max_tokens: int = 1000) -> str:
     from utils.ai_client import ai_response
     return ai_response(prompt, task="audit", max_tokens=max_tokens)
 
-from utils.ai_client import safe_json
 
 
 # ─────────────────────────────────────────────────────────────────────────────
