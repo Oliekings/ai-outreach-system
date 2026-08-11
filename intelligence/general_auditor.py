@@ -11,12 +11,15 @@ from anthropic import Anthropic
 
 load_dotenv()
 import sys
-sys.stdout.reconfigure(encoding='utf-8')
+
+sys.stdout.reconfigure(encoding="utf-8")
+
 
 class Symbol:
     """Clean logging symbols that work across all terminals"""
-    USE_EMOJI = False # Set to True if your terminal supports UTF-8 emojis
-    
+
+    USE_EMOJI = False  # Set to True if your terminal supports UTF-8 emojis
+
     LIST = "📋" if USE_EMOJI else "[LIST]"
     LEAD = "💎" if USE_EMOJI else "[LEAD]"
     SEARCH = "🔍" if USE_EMOJI else "[SEARCH]"
@@ -55,6 +58,7 @@ def load_config(path: str = "ceo_config.json") -> dict:
     except:
         return {}
 
+
 config = load_config()
 
 # ── Output directories ────────────────────────────────────────────────────────
@@ -67,7 +71,9 @@ os.makedirs("results/reports", exist_ok=True)
 # ─────────────────────────────────────────────────────────────────────────────
 def get_ai_response(prompt: str, max_tokens: int = 1000) -> str:
     from utils.ai_client import ai_response
+
     return ai_response(prompt, task="audit", max_tokens=max_tokens)
+
 
 from utils.ai_client import safe_json
 
@@ -89,9 +95,13 @@ async def human_scroll(page, scrolls=4):
 
 async def handle_consent(page):
     for sel in [
-        'button[aria-label="Accept all"]', 'button[jsname="b3VHJd"]',
-        '#L2AGLb', '.QS5gu', 'button:has-text("Accept all")',
-        'button:has-text("I agree")', 'button:has-text("Accept")',
+        'button[aria-label="Accept all"]',
+        'button[jsname="b3VHJd"]',
+        "#L2AGLb",
+        ".QS5gu",
+        'button:has-text("Accept all")',
+        'button:has-text("I agree")',
+        'button:has-text("Accept")',
     ]:
         try:
             btn = await page.query_selector(sel)
@@ -112,17 +122,28 @@ def calculate_grade(score: int, max_score: int) -> str:
     if max_score == 0:
         return "N/A"
     pct = (score / max_score) * 100
-    if pct >= 90: return "A+"
-    if pct >= 85: return "A"
-    if pct >= 80: return "A-"
-    if pct >= 75: return "B+"
-    if pct >= 70: return "B"
-    if pct >= 65: return "B-"
-    if pct >= 60: return "C+"
-    if pct >= 55: return "C"
-    if pct >= 50: return "C-"
-    if pct >= 45: return "D+"
-    if pct >= 40: return "D"
+    if pct >= 90:
+        return "A+"
+    if pct >= 85:
+        return "A"
+    if pct >= 80:
+        return "A-"
+    if pct >= 75:
+        return "B+"
+    if pct >= 70:
+        return "B"
+    if pct >= 65:
+        return "B-"
+    if pct >= 60:
+        return "C+"
+    if pct >= 55:
+        return "C"
+    if pct >= 50:
+        return "C-"
+    if pct >= 45:
+        return "D+"
+    if pct >= 40:
+        return "D"
     return "F"
 
 
@@ -151,7 +172,7 @@ async def audit_website(page, url: str, business_name: str) -> dict:
         "max_score": 10,
         "grade": "F",
         "issues": [],
-        "wins": []
+        "wins": [],
     }
 
     if not url:
@@ -160,6 +181,7 @@ async def audit_website(page, url: str, business_name: str) -> dict:
 
     try:
         import time
+
         print(f"      {Symbol.WORLD} Loading website...")
         start = time.time()
         await page.goto(url, timeout=20000, wait_until="domcontentloaded")
@@ -232,7 +254,7 @@ async def audit_website(page, url: str, business_name: str) -> dict:
         # Mobile check
         mobile_ctx = await page.context.browser.new_context(
             viewport={"width": 390, "height": 844},
-            user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15"
+            user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15",
         )
         mobile_page = await mobile_ctx.new_page()
         try:
@@ -254,47 +276,91 @@ async def audit_website(page, url: str, business_name: str) -> dict:
         # Professional email check
         page_text = await page.evaluate("() => document.body.innerText")
         email_match = re.search(
-            r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}', page_text
+            r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}", page_text
         )
         if email_match:
             email = email_match.group(0).lower()
             result["professional_email"] = not any(
-                g in email for g in ['gmail.com', 'yahoo.com', 'hotmail.com']
+                g in email for g in ["gmail.com", "yahoo.com", "hotmail.com"]
             )
 
         # Score calculation
         score = 0
-        if result["has_ssl"]: score += 1; result["wins"].append("SSL certificate active")
-        else: result["issues"].append("No SSL — browser shows 'Not Secure' to visitors")
+        if result["has_ssl"]:
+            score += 1
+            result["wins"].append("SSL certificate active")
+        else:
+            result["issues"].append("No SSL — browser shows 'Not Secure' to visitors")
 
         if result["load_time"] and result["load_time"] < 3:
-            score += 1; result["wins"].append(f"Fast load time ({result['load_time']}s)")
+            score += 1
+            result["wins"].append(f"Fast load time ({result['load_time']}s)")
         else:
-            result["issues"].append(f"Slow load time ({result['load_time']}s) — visitors leave after 3s")
+            result["issues"].append(
+                f"Slow load time ({result['load_time']}s) — visitors leave after 3s"
+            )
 
-        if result["is_mobile_friendly"]: score += 1; result["wins"].append("Mobile friendly")
-        else: result["issues"].append("Not mobile friendly — 70%+ of customers use phones")
+        if result["is_mobile_friendly"]:
+            score += 1
+            result["wins"].append("Mobile friendly")
+        else:
+            result["issues"].append(
+                "Not mobile friendly — 70%+ of customers use phones"
+            )
 
-        if result["has_contact_form"]: score += 1; result["wins"].append("Contact form present")
-        else: result["issues"].append("No contact form — visitors can't easily reach them")
+        if result["has_contact_form"]:
+            score += 1
+            result["wins"].append("Contact form present")
+        else:
+            result["issues"].append(
+                "No contact form — visitors can't easily reach them"
+            )
 
-        if result["has_whatsapp_button"]: score += 1; result["wins"].append("WhatsApp button present")
-        else: result["issues"].append("No WhatsApp button — missing Nigeria's #1 comm tool")
+        if result["has_whatsapp_button"]:
+            score += 1
+            result["wins"].append("WhatsApp button present")
+        else:
+            result["issues"].append(
+                "No WhatsApp button — missing Nigeria's #1 comm tool"
+            )
 
-        if result["has_booking_system"]: score += 1; result["wins"].append("Booking system present")
-        else: result["issues"].append("No online booking — losing customers who can't reserve")
+        if result["has_booking_system"]:
+            score += 1
+            result["wins"].append("Booking system present")
+        else:
+            result["issues"].append(
+                "No online booking — losing customers who can't reserve"
+            )
 
-        if result["has_google_analytics"]: score += 1; result["wins"].append("Analytics tracking active")
-        else: result["issues"].append("No analytics — flying blind with no visitor data")
+        if result["has_google_analytics"]:
+            score += 1
+            result["wins"].append("Analytics tracking active")
+        else:
+            result["issues"].append("No analytics — flying blind with no visitor data")
 
-        if result["has_social_links"]: score += 1; result["wins"].append("Social media linked")
-        else: result["issues"].append("No social media links — disconnected from audience")
+        if result["has_social_links"]:
+            score += 1
+            result["wins"].append("Social media linked")
+        else:
+            result["issues"].append(
+                "No social media links — disconnected from audience"
+            )
 
-        if result["has_clear_cta"]: score += 1; result["wins"].append("Clear call-to-action present")
-        else: result["issues"].append("No clear call-to-action — visitors don't know what to do next")
+        if result["has_clear_cta"]:
+            score += 1
+            result["wins"].append("Clear call-to-action present")
+        else:
+            result["issues"].append(
+                "No clear call-to-action — visitors don't know what to do next"
+            )
 
-        if result["professional_email"]: score += 1; result["wins"].append("Professional email domain")
-        else: result["issues"].append("Using Gmail/Yahoo — looks unprofessional to customers")
+        if result["professional_email"]:
+            score += 1
+            result["wins"].append("Professional email domain")
+        else:
+            result["issues"].append(
+                "Using Gmail/Yahoo — looks unprofessional to customers"
+            )
 
         result["score"] = score
         result["grade"] = calculate_grade(score, result["max_score"])
@@ -327,7 +393,7 @@ async def audit_google_business(page, business_name: str, city: str) -> dict:
         "max_score": 8,
         "grade": "F",
         "issues": [],
-        "wins": []
+        "wins": [],
     }
 
     try:
@@ -335,7 +401,8 @@ async def audit_google_business(page, business_name: str, city: str) -> dict:
         query = f"{business_name} {city} Nigeria"
         await page.goto(
             f"https://www.google.com/search?q={query.replace(' ', '+')}",
-            timeout=15000, wait_until="domcontentloaded"
+            timeout=15000,
+            wait_until="domcontentloaded",
         )
         await handle_consent(page)
         await human_pause(2.0, 4.0)
@@ -345,31 +412,34 @@ async def audit_google_business(page, business_name: str, city: str) -> dict:
         html = await page.evaluate("() => document.body.innerHTML")
 
         # Check if business panel appears
-        result["found"] = any(kw in text.lower() for kw in [
-            business_name.lower()[:8], 'directions', 'website', 'call'
-        ])
+        result["found"] = any(
+            kw in text.lower()
+            for kw in [business_name.lower()[:8], "directions", "website", "call"]
+        )
 
         if result["found"]:
-            result["is_claimed"] = 'claimed' in text.lower() or 'website' in text.lower()
+            result["is_claimed"] = (
+                "claimed" in text.lower() or "website" in text.lower()
+            )
 
             # Rating
-            rating_match = re.search(r'(\d\.\d)\s*\(', text)
+            rating_match = re.search(r"(\d\.\d)\s*\(", text)
             if rating_match:
                 result["rating"] = float(rating_match.group(1))
                 result["wins"].append(f"Rating: {result['rating']} stars")
 
             # Review count
-            review_match = re.search(r'\(([\d,]+)\s*review', text, re.I)
+            review_match = re.search(r"\(([\d,]+)\s*review", text, re.I)
             if review_match:
                 result["review_count"] = review_match.group(1)
 
             # Hours
-            result["has_hours"] = any(h in text.lower() for h in [
-                'open', 'closed', 'hours', 'am', 'pm'
-            ])
+            result["has_hours"] = any(
+                h in text.lower() for h in ["open", "closed", "hours", "am", "pm"]
+            )
 
             # Photos
-            photo_match = re.search(r'(\d+)\s*photo', text, re.I)
+            photo_match = re.search(r"(\d+)\s*photo", text, re.I)
             if photo_match:
                 result["photo_count"] = int(photo_match.group(1))
                 result["has_photos"] = result["photo_count"] > 0
@@ -378,45 +448,87 @@ async def audit_google_business(page, business_name: str, city: str) -> dict:
             result["has_description"] = len(text) > 500
 
             # Booking link
-            result["has_booking_link"] = 'book' in text.lower() or 'reserv' in text.lower()
+            result["has_booking_link"] = (
+                "book" in text.lower() or "reserv" in text.lower()
+            )
 
             # Responds to reviews
-            result["responds_to_reviews"] = 'response from the owner' in text.lower()
+            result["responds_to_reviews"] = "response from the owner" in text.lower()
 
             # Score
             score = 0
-            if result["is_claimed"]: score += 1; result["wins"].append("Profile claimed")
-            else: result["issues"].append("Profile may not be claimed — losing local visibility")
+            if result["is_claimed"]:
+                score += 1
+                result["wins"].append("Profile claimed")
+            else:
+                result["issues"].append(
+                    "Profile may not be claimed — losing local visibility"
+                )
 
-            if result["has_hours"]: score += 1; result["wins"].append("Business hours listed")
-            else: result["issues"].append("No hours listed — customers don't know when to visit")
+            if result["has_hours"]:
+                score += 1
+                result["wins"].append("Business hours listed")
+            else:
+                result["issues"].append(
+                    "No hours listed — customers don't know when to visit"
+                )
 
-            if result["has_photos"]: score += 1; result["wins"].append(f"{result['photo_count']} photos uploaded")
-            else: result["issues"].append("No photos — businesses with photos get 42% more direction requests")
+            if result["has_photos"]:
+                score += 1
+                result["wins"].append(f"{result['photo_count']} photos uploaded")
+            else:
+                result["issues"].append(
+                    "No photos — businesses with photos get 42% more direction requests"
+                )
 
-            if result["has_description"]: score += 1; result["wins"].append("Business description present")
-            else: result["issues"].append("No business description — missing SEO opportunity")
+            if result["has_description"]:
+                score += 1
+                result["wins"].append("Business description present")
+            else:
+                result["issues"].append(
+                    "No business description — missing SEO opportunity"
+                )
 
-            if result["has_booking_link"]: score += 1; result["wins"].append("Booking link on profile")
-            else: result["issues"].append("No booking link on Google profile")
+            if result["has_booking_link"]:
+                score += 1
+                result["wins"].append("Booking link on profile")
+            else:
+                result["issues"].append("No booking link on Google profile")
 
-            if result["responds_to_reviews"]: score += 1; result["wins"].append("Responds to customer reviews")
-            else: result["issues"].append("Not responding to reviews — hurting trust and ranking")
+            if result["responds_to_reviews"]:
+                score += 1
+                result["wins"].append("Responds to customer reviews")
+            else:
+                result["issues"].append(
+                    "Not responding to reviews — hurting trust and ranking"
+                )
 
             if result["rating"] and result["rating"] >= 4.0:
-                score += 1; result["wins"].append(f"Strong rating: {result['rating']}")
+                score += 1
+                result["wins"].append(f"Strong rating: {result['rating']}")
             elif result["rating"]:
-                result["issues"].append(f"Rating below 4.0 ({result['rating']}) — needs improvement")
+                result["issues"].append(
+                    f"Rating below 4.0 ({result['rating']}) — needs improvement"
+                )
 
             if result["review_count"]:
                 count = int(result["review_count"].replace(",", ""))
-                if count >= 100: score += 1; result["wins"].append(f"Strong review volume: {result['review_count']}")
-                else: result["issues"].append(f"Low review count ({result['review_count']}) — needs more reviews")
+                if count >= 100:
+                    score += 1
+                    result["wins"].append(
+                        f"Strong review volume: {result['review_count']}"
+                    )
+                else:
+                    result["issues"].append(
+                        f"Low review count ({result['review_count']}) — needs more reviews"
+                    )
 
             result["score"] = score
             result["grade"] = calculate_grade(score, result["max_score"])
         else:
-            result["issues"].append("Business not appearing prominently in Google search")
+            result["issues"].append(
+                "Business not appearing prominently in Google search"
+            )
 
     except Exception as e:
         result["issues"].append(f"Google Business audit failed: {str(e)[:80]}")
@@ -450,7 +562,7 @@ async def audit_social_media(lead: dict) -> dict:
         "max_score": 8,
         "grade": "F",
         "issues": [],
-        "wins": []
+        "wins": [],
     }
 
     ig = lead.get("instagram") or {}
@@ -463,7 +575,9 @@ async def audit_social_media(lead: dict) -> dict:
         result["instagram"]["found"] = True
         result["instagram"]["followers"] = ig.get("followers")
         score += 1
-        result["wins"].append(f"Active on Instagram ({ig.get('followers', '?')} followers)")
+        result["wins"].append(
+            f"Active on Instagram ({ig.get('followers', '?')} followers)"
+        )
 
         if ig.get("email") or ig.get("phone"):
             result["instagram"]["has_contact_in_bio"] = True
@@ -486,7 +600,9 @@ async def audit_social_media(lead: dict) -> dict:
             score += 1
             result["wins"].append("Contact info on Facebook page")
         else:
-            result["issues"].append("Facebook About section incomplete — missing contact info")
+            result["issues"].append(
+                "Facebook About section incomplete — missing contact info"
+            )
     else:
         result["issues"].append("No Facebook page found — missing older demographic")
 
@@ -495,7 +611,9 @@ async def audit_social_media(lead: dict) -> dict:
         score += 1
         result["wins"].append("Present on multiple platforms")
     else:
-        result["issues"].append("Not consistent across platforms — patchy online presence")
+        result["issues"].append(
+            "Not consistent across platforms — patchy online presence"
+        )
 
     # Overall social presence
     if score == 0:
@@ -505,17 +623,28 @@ async def audit_social_media(lead: dict) -> dict:
 
     # Bonus scores
     if ig.get("followers"):
-        followers_str = str(ig.get("followers", "0")).replace(",", "").replace("K", "000").replace("k", "000")
+        followers_str = (
+            str(ig.get("followers", "0"))
+            .replace(",", "")
+            .replace("K", "000")
+            .replace("k", "000")
+        )
         try:
-            followers_num = float(re.sub(r'[^0-9.]', '', followers_str))
+            followers_num = float(re.sub(r"[^0-9.]", "", followers_str))
             if followers_num >= 5000:
                 score += 1
-                result["wins"].append(f"Strong Instagram following ({ig.get('followers')})")
+                result["wins"].append(
+                    f"Strong Instagram following ({ig.get('followers')})"
+                )
             elif followers_num >= 1000:
                 score += 1
-                result["wins"].append(f"Growing Instagram following ({ig.get('followers')})")
+                result["wins"].append(
+                    f"Growing Instagram following ({ig.get('followers')})"
+                )
             else:
-                result["issues"].append(f"Low Instagram followers ({ig.get('followers')}) — needs growth strategy")
+                result["issues"].append(
+                    f"Low Instagram followers ({ig.get('followers')}) — needs growth strategy"
+                )
         except:
             pass
 
@@ -542,7 +671,7 @@ async def audit_reputation(lead: dict) -> dict:
         "max_score": 6,
         "grade": "F",
         "issues": [],
-        "wins": []
+        "wins": [],
     }
 
     score = 0
@@ -550,26 +679,41 @@ async def audit_reputation(lead: dict) -> dict:
     # Rating
     rating_str = str(lead.get("rating") or "0")
     try:
-        rating = float(re.sub(r'[^0-9.]', '', rating_str))
-        if rating >= 4.5: score += 2; result["wins"].append(f"Excellent rating: {rating}")
-        elif rating >= 4.0: score += 1; result["wins"].append(f"Good rating: {rating}")
-        else: result["issues"].append(f"Below average rating: {rating} — actively harming business")
+        rating = float(re.sub(r"[^0-9.]", "", rating_str))
+        if rating >= 4.5:
+            score += 2
+            result["wins"].append(f"Excellent rating: {rating}")
+        elif rating >= 4.0:
+            score += 1
+            result["wins"].append(f"Good rating: {rating}")
+        else:
+            result["issues"].append(
+                f"Below average rating: {rating} — actively harming business"
+            )
     except:
         result["issues"].append("Rating not found — Google listing may be incomplete")
 
     # Review volume
     reviews_str = str(lead.get("reviews") or "0").replace(",", "")
     try:
-        count = int(re.sub(r'[^0-9]', '', reviews_str))
-        if count >= 500: score += 2; result["wins"].append(f"Very high review volume: {count}")
-        elif count >= 100: score += 1; result["wins"].append(f"Good review volume: {count}")
-        else: result["issues"].append(f"Low review count ({count}) — needs review generation strategy")
+        count = int(re.sub(r"[^0-9]", "", reviews_str))
+        if count >= 500:
+            score += 2
+            result["wins"].append(f"Very high review volume: {count}")
+        elif count >= 100:
+            score += 1
+            result["wins"].append(f"Good review volume: {count}")
+        else:
+            result["issues"].append(
+                f"Low review count ({count}) — needs review generation strategy"
+            )
     except:
         pass
 
     # Responds to reviews
     if reviews.get("responds_to_reviews"):
-        score += 1; result["wins"].append("Actively responds to customer reviews")
+        score += 1
+        result["wins"].append("Actively responds to customer reviews")
     else:
         result["issues"].append("Not responding to reviews — losing customer trust")
 
@@ -599,7 +743,7 @@ async def audit_seo(page, business_name: str, city: str, website_url: str) -> di
         "max_score": 6,
         "grade": "F",
         "issues": [],
-        "wins": []
+        "wins": [],
     }
 
     try:
@@ -608,7 +752,8 @@ async def audit_seo(page, business_name: str, city: str, website_url: str) -> di
         # Check if ranks for own name
         await page.goto(
             f"https://www.google.com/search?q={business_name.replace(' ', '+')}+{city}",
-            timeout=15000, wait_until="domcontentloaded"
+            timeout=15000,
+            wait_until="domcontentloaded",
         )
         await handle_consent(page)
         await human_pause(2.0, 3.5)
@@ -619,15 +764,21 @@ async def audit_seo(page, business_name: str, city: str, website_url: str) -> di
             result["score"] += 1
             result["wins"].append("Appears in search for own business name")
         else:
-            result["issues"].append("Doesn't appear when searching for own name — serious SEO problem")
+            result["issues"].append(
+                "Doesn't appear when searching for own name — serious SEO problem"
+            )
 
         # Local pack check
-        result["ranks_in_local_pack"] = 'directions' in text.lower() or 'open' in text.lower()
+        result["ranks_in_local_pack"] = (
+            "directions" in text.lower() or "open" in text.lower()
+        )
         if result["ranks_in_local_pack"]:
             result["score"] += 1
             result["wins"].append("Appearing in Google local results")
         else:
-            result["issues"].append("Not in Google local pack — invisible to nearby customers")
+            result["issues"].append(
+                "Not in Google local pack — invisible to nearby customers"
+            )
 
         await human_pause(2.0, 3.5)
 
@@ -635,7 +786,8 @@ async def audit_seo(page, business_name: str, city: str, website_url: str) -> di
         category_query = f"best restaurant in {city} Nigeria"
         await page.goto(
             f"https://www.google.com/search?q={category_query.replace(' ', '+')}",
-            timeout=15000, wait_until="domcontentloaded"
+            timeout=15000,
+            wait_until="domcontentloaded",
         )
         await human_pause(2.0, 3.5)
         category_text = await page.evaluate("() => document.body.innerText")
@@ -645,7 +797,9 @@ async def audit_seo(page, business_name: str, city: str, website_url: str) -> di
             result["score"] += 2
             result["wins"].append(f"Ranking for category searches in {city}")
         else:
-            result["issues"].append(f"Not ranking for category searches — missing discovery traffic")
+            result["issues"].append(
+                f"Not ranking for category searches — missing discovery traffic"
+            )
 
         # Website indexed
         if website_url:
@@ -681,7 +835,7 @@ def audit_whatsapp(lead: dict) -> dict:
         "max_score": 5,
         "grade": "F",
         "issues": [],
-        "wins": []
+        "wins": [],
     }
 
     whatsapp = lead.get("contact_whatsapp")
@@ -695,7 +849,9 @@ def audit_whatsapp(lead: dict) -> dict:
         result["score"] += 1
         result["wins"].append(f"WhatsApp number found: {whatsapp}")
     else:
-        result["issues"].append("No WhatsApp number found — critical gap for Nigerian market")
+        result["issues"].append(
+            "No WhatsApp number found — critical gap for Nigerian market"
+        )
 
     # Check presence across surfaces
     if site.get("whatsapp_links"):
@@ -703,7 +859,9 @@ def audit_whatsapp(lead: dict) -> dict:
         result["score"] += 1
         result["wins"].append("WhatsApp linked on website")
     else:
-        result["issues"].append("WhatsApp not linked on website — missing easy contact option")
+        result["issues"].append(
+            "WhatsApp not linked on website — missing easy contact option"
+        )
 
     if ig.get("whatsapp"):
         result["on_instagram"] = True
@@ -723,7 +881,9 @@ def audit_whatsapp(lead: dict) -> dict:
         result["score"] += 1
         result["wins"].append("Likely using WhatsApp Business")
     else:
-        result["issues"].append("Likely on regular WhatsApp — missing catalog, auto-reply, and broadcast features")
+        result["issues"].append(
+            "Likely on regular WhatsApp — missing catalog, auto-reply, and broadcast features"
+        )
 
     result["grade"] = calculate_grade(result["score"], result["max_score"])
     return result
@@ -743,7 +903,7 @@ def audit_competitor_gap(lead: dict, website_audit: dict, social_audit: dict) ->
         "max_score": 5,
         "grade": "B",
         "issues": [],
-        "wins": []
+        "wins": [],
     }
 
     if not competitors:
@@ -784,7 +944,9 @@ def audit_competitor_gap(lead: dict, website_audit: dict, social_audit: dict) ->
         result["advantages"].append("Strong social media presence vs competitors")
     elif social_audit["instagram"]["found"] or social_audit["facebook"]["found"]:
         score += 1
-        result["gaps"].append("Only on one social platform while competitors may be on more")
+        result["gaps"].append(
+            "Only on one social platform while competitors may be on more"
+        )
     else:
         result["issues"].append("No social media — likely behind all competitors")
 
@@ -792,9 +954,13 @@ def audit_competitor_gap(lead: dict, website_audit: dict, social_audit: dict) ->
     if score >= 4:
         result["wins"].append("Competitive digital position overall")
     elif score >= 2:
-        result["issues"].append("Slightly behind competitors digitally — gap is closeable")
+        result["issues"].append(
+            "Slightly behind competitors digitally — gap is closeable"
+        )
     else:
-        result["urgent_threats"].append("Significantly behind competitors — urgent action needed")
+        result["urgent_threats"].append(
+            "Significantly behind competitors — urgent action needed"
+        )
 
     result["score"] = min(score, result["max_score"])
     result["grade"] = calculate_grade(result["score"], result["max_score"])
@@ -809,13 +975,13 @@ def calculate_revenue_opportunity(lead: dict, audits: dict) -> dict:
         "monthly_lost_naira": 0,
         "breakdown": [],
         "quick_wins": [],
-        "biggest_opportunity": None
+        "biggest_opportunity": None,
     }
 
     # Base estimate from review volume
     reviews_str = str(lead.get("reviews") or "0").replace(",", "")
     try:
-        review_count = int(re.sub(r'[^0-9]', '', reviews_str))
+        review_count = int(re.sub(r"[^0-9]", "", reviews_str))
     except:
         review_count = 50
 
@@ -835,64 +1001,86 @@ def calculate_revenue_opportunity(lead: dict, audits: dict) -> dict:
     if not lead.get("official_website", {}).get("url"):
         lost = int(estimated_monthly_customers * 0.20 * avg_spend_naira)
         total_lost += lost
-        result["breakdown"].append({
-            "issue": "No website",
-            "lost_customers_monthly": int(estimated_monthly_customers * 0.20),
-            "lost_revenue_naira": lost,
-            "explanation": "Estimated 20% of potential customers can't find you online"
-        })
-        result["quick_wins"].append("Build a professional website — recover â‚¦{:,}/month".format(lost))
+        result["breakdown"].append(
+            {
+                "issue": "No website",
+                "lost_customers_monthly": int(estimated_monthly_customers * 0.20),
+                "lost_revenue_naira": lost,
+                "explanation": "Estimated 20% of potential customers can't find you online",
+            }
+        )
+        result["quick_wins"].append(
+            "Build a professional website — recover â‚¦{:,}/month".format(lost)
+        )
 
     # No online booking loss
     if not website_audit.get("has_booking_system"):
         lost = int(estimated_monthly_customers * 0.15 * avg_spend_naira)
         total_lost += lost
-        result["breakdown"].append({
-            "issue": "No online booking",
-            "lost_customers_monthly": int(estimated_monthly_customers * 0.15),
-            "lost_revenue_naira": lost,
-            "explanation": "15% of customers leave if they can't book online"
-        })
-        result["quick_wins"].append("Add online booking — recover â‚¦{:,}/month".format(lost))
+        result["breakdown"].append(
+            {
+                "issue": "No online booking",
+                "lost_customers_monthly": int(estimated_monthly_customers * 0.15),
+                "lost_revenue_naira": lost,
+                "explanation": "15% of customers leave if they can't book online",
+            }
+        )
+        result["quick_wins"].append(
+            "Add online booking — recover â‚¦{:,}/month".format(lost)
+        )
 
     # Slow website loss
     load_time = website_audit.get("load_time") or 0
     if load_time > 3:
         lost = int(estimated_monthly_customers * 0.10 * avg_spend_naira)
         total_lost += lost
-        result["breakdown"].append({
-            "issue": f"Slow website ({load_time}s load time)",
-            "lost_customers_monthly": int(estimated_monthly_customers * 0.10),
-            "lost_revenue_naira": lost,
-            "explanation": "53% of mobile visitors leave after 3 seconds"
-        })
-        result["quick_wins"].append("Speed up website — recover â‚¦{:,}/month".format(lost))
+        result["breakdown"].append(
+            {
+                "issue": f"Slow website ({load_time}s load time)",
+                "lost_customers_monthly": int(estimated_monthly_customers * 0.10),
+                "lost_revenue_naira": lost,
+                "explanation": "53% of mobile visitors leave after 3 seconds",
+            }
+        )
+        result["quick_wins"].append(
+            "Speed up website — recover â‚¦{:,}/month".format(lost)
+        )
 
     # No WhatsApp loss
     if not wa_audit.get("has_whatsapp"):
         lost = int(estimated_monthly_customers * 0.12 * avg_spend_naira)
         total_lost += lost
-        result["breakdown"].append({
-            "issue": "No WhatsApp presence",
-            "lost_customers_monthly": int(estimated_monthly_customers * 0.12),
-            "lost_revenue_naira": lost,
-            "explanation": "Nigerian customers prefer WhatsApp contact — missing this loses leads"
-        })
-        result["quick_wins"].append("Set up WhatsApp Business — recover â‚¦{:,}/month".format(lost))
+        result["breakdown"].append(
+            {
+                "issue": "No WhatsApp presence",
+                "lost_customers_monthly": int(estimated_monthly_customers * 0.12),
+                "lost_revenue_naira": lost,
+                "explanation": "Nigerian customers prefer WhatsApp contact — missing this loses leads",
+            }
+        )
+        result["quick_wins"].append(
+            "Set up WhatsApp Business — recover â‚¦{:,}/month".format(lost)
+        )
 
     # No social media loss
-    if not social_audit.get("instagram", {}).get("found") and not social_audit.get("facebook", {}).get("found"):
+    if not social_audit.get("instagram", {}).get("found") and not social_audit.get(
+        "facebook", {}
+    ).get("found"):
         lost = int(estimated_monthly_customers * 0.10 * avg_spend_naira)
         total_lost += lost
-        result["breakdown"].append({
-            "issue": "No social media presence",
-            "lost_customers_monthly": int(estimated_monthly_customers * 0.10),
-            "lost_revenue_naira": lost,
-            "explanation": "No social discovery means no word-of-mouth amplification"
-        })
+        result["breakdown"].append(
+            {
+                "issue": "No social media presence",
+                "lost_customers_monthly": int(estimated_monthly_customers * 0.10),
+                "lost_revenue_naira": lost,
+                "explanation": "No social discovery means no word-of-mouth amplification",
+            }
+        )
 
     result["monthly_lost_naira"] = total_lost
-    result["biggest_opportunity"] = result["quick_wins"][0] if result["quick_wins"] else None
+    result["biggest_opportunity"] = (
+        result["quick_wins"][0] if result["quick_wins"] else None
+    )
 
     return result
 
@@ -953,12 +1141,21 @@ def generate_report_card(lead: dict, audits: dict, revenue: dict) -> str:
 
     if revenue.get("breakdown"):
         for item in revenue["breakdown"]:
-            report += f"\n  â€¢ {item['issue']}: â‚¦{item['lost_revenue_naira']:,}/month"
+            report += (
+                f"\n  â€¢ {item['issue']}: â‚¦{item['lost_revenue_naira']:,}/month"
+            )
 
     report += f"\n\n{line}\n  CRITICAL ISSUES\n{line}"
 
     all_issues = []
-    for audit_key in ["website", "google_business", "social", "reputation", "seo", "whatsapp"]:
+    for audit_key in [
+        "website",
+        "google_business",
+        "social",
+        "reputation",
+        "seo",
+        "whatsapp",
+    ]:
         audit = audits.get(audit_key) or {}
         all_issues.extend(audit.get("issues", [])[:2])
 
@@ -986,6 +1183,177 @@ def generate_report_card(lead: dict, audits: dict, revenue: dict) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 # MAIN AUDITOR
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+def _load_existing_audits(audit_results_file: str) -> dict:
+    existing_audits = {}
+    if os.path.exists(audit_results_file):
+        try:
+            with open(audit_results_file, "r", encoding="utf-8") as f:
+                old_results = json.load(f)
+                existing_audits = {r["name"]: r for r in old_results if "name" in r}
+                print(f"ℹ️  Loaded {len(existing_audits)} existing audit reports.")
+        except Exception as e:
+            print(f"⚠️ Could not load existing audit results: {e}")
+    return existing_audits
+
+
+async def _setup_stealth_context(browser) -> "playwright.async_api.BrowserContext":
+    context = await browser.new_context(
+        viewport={"width": 1366, "height": 768},
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        locale="en-GB",
+        timezone_id="Africa/Lagos",
+    )
+
+    # Mask automation signals with advanced stealth script
+    await context.add_init_script("""
+        // 1. Hide webdriver
+        Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+
+        // 2. Add full chrome object
+        window.chrome = {
+            app: {
+                isInstalled: false,
+                InstallState: { DISABLED: 'DISABLED', INSTALLED: 'INSTALLED', NOT_INSTALLED: 'NOT_INSTALLED' },
+                RunningState: { CANNOT_RUN: 'CANNOT_RUN', RUNNING: 'RUNNING', CAN_RUN: 'CAN_RUN' }
+            },
+            csi: () => {},
+            loadTimes: () => {},
+            runtime: {
+                OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' },
+                OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },
+                PlatformArch: { ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+                PlatformNaclArch: { ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+                PlatformOs: { ANDROID: 'android', CROS: 'cros', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win' },
+                RequestUpdateCheckStatus: { NO_UPDATE: 'no_update', THROTTLED: 'throttled', UPDATE_AVAILABLE: 'update_available' }
+            }
+        };
+
+        // 3. Spoof plugins
+        Object.defineProperty(navigator, 'plugins', {
+            get: () => [
+                { description: "Portable Document Format", filename: "internal-pdf-viewer", name: "Chrome PDF Viewer" },
+                { description: "", filename: "mhjfbmdgcfjbbpaeojofohoefgieoano", name: "Chromium PDF Viewer" },
+                { description: "", filename: "internal-pdf-viewer", name: "Microsoft Edge PDF Viewer" },
+                { description: "", filename: "internal-pdf-viewer", name: "PDF Viewer" },
+                { description: "", filename: "internal-pdf-viewer", name: "WebKit built-in PDF" }
+            ]
+        });
+
+        // 4. Spoof permissions
+        if (window.navigator.permissions) {
+            const originalQuery = window.navigator.permissions.query;
+            window.navigator.permissions.query = (parameters) => (
+                parameters.name === 'notifications' ?
+                    Promise.resolve({ state: Notification.permission }) :
+                    originalQuery(parameters)
+            );
+        }
+
+        // 5. Hardware concurrency and memory
+        Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
+        Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
+    """)
+    return context
+
+
+async def _audit_single_lead(page, lead, index: int, total: int) -> dict:
+    name = lead["name"]
+    website_url = lead.get("official_website", {}).get("url")
+
+    print(f"\n{'='*60}")
+    print(f"{Symbol.SEARCH}¬ [{index}/{total}] Auditing: {name}")
+    print(f"{'='*60}")
+
+    audits = {}
+
+    # 1. Website
+    print(f"\n   {Symbol.WORLD} Website Audit...")
+    audits["website"] = await audit_website(page, website_url, name)
+    print(
+        f"      Grade: {audits['website']['grade']} | Issues: {len(audits['website']['issues'])}"
+    )
+    await human_pause(3.0, 5.0)
+
+    # 2. Google Business
+    print(f"\n   {Symbol.MAPS} Google Business Profile Audit...")
+    audits["google_business"] = await audit_google_business(
+        page, name, lead.get("city", "Abuja")
+    )
+    print(
+        f"      Grade: {audits['google_business']['grade']} | Rating: {audits['google_business'].get('rating')}"
+    )
+    await human_pause(3.0, 5.0)
+
+    # 3. Social Media
+    print(f"\n   {Symbol.SOCIAL} Social Media Audit...")
+    audits["social"] = await audit_social_media(lead)
+    print(
+        f"      Grade: {audits['social']['grade']} | IG: {audits['social']['instagram']['found']} | FB: {audits['social']['facebook']['found']}"
+    )
+    await human_pause(2.0, 3.0)
+
+    # 4. Reputation Audit
+    print(f"\n   {Symbol.TARGET} Reputation Audit...")
+    audits["reputation"] = await audit_reputation(lead)
+    print(
+        f"      Grade: {audits['reputation']['grade']} | Rating: {audits['reputation'].get('overall_rating')}"
+    )
+    await human_pause(2.0, 3.0)
+
+    # 5. SEO
+    print(f"\n   {Symbol.SEARCH}  SEO Audit...")
+    audits["seo"] = await audit_seo(page, name, lead.get("city", "Abuja"), website_url)
+    print(
+        f"      Grade: {audits['seo']['grade']} | Local pack: {audits['seo']['ranks_in_local_pack']}"
+    )
+    await human_pause(3.0, 5.0)
+
+    # 6. WhatsApp
+    print(f"\n   {Symbol.WHATSAPP} WhatsApp Audit...")
+    audits["whatsapp"] = audit_whatsapp(lead)
+    print(
+        f"      Grade: {audits['whatsapp']['grade']} | Has WA: {audits['whatsapp']['has_whatsapp']}"
+    )
+
+    # 7. Competitor Gap
+    print(f"\n   🏆 Competitor Gap Audit...")
+    audits["competitor_gap"] = audit_competitor_gap(
+        lead, audits["website"], audits["social"]
+    )
+    print(
+        f"      Grade: {audits['competitor_gap']['grade']} | Threats: {len(audits['competitor_gap']['urgent_threats'])}"
+    )
+
+    # 8. Revenue Opportunity
+    print(f"\n   💰 Revenue Opportunity...")
+    revenue = calculate_revenue_opportunity(lead, audits)
+    print(f"      Monthly opportunity: ₦{revenue['monthly_lost_naira']:,}")
+
+    # 9. Report Card
+    print(f"\n   {Symbol.LIST} Generating Report Card...")
+    report_card = generate_report_card(lead, audits, revenue)
+    print(report_card)
+
+    # Save individual report
+    report_path = (
+        f"results/reports/{name.replace(' ', '_').replace('/', '_')}_audit.txt"
+    )
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(report_card)
+
+    audit_result = {
+        "name": name,
+        "website": website_url,
+        "audits": audits,
+        "revenue_opportunity": revenue,
+        "report_card_path": report_path,
+        "audited_at": datetime.now().isoformat(),
+    }
+    return audit_result
+
+
 async def audit_all_leads(leads_file: str = "results/leads/enriched_leads.json"):
     if not os.path.exists(leads_file):
         print(f"{Symbol.ERROR} No enriched leads found. Run lead_enricher.py first.")
@@ -997,29 +1365,25 @@ async def audit_all_leads(leads_file: str = "results/leads/enriched_leads.json")
     print(f"\n{Symbol.SEARCH}¬ General Auditor — Processing {len(leads)} leads\n")
     print("=" * 60)
 
-    existing_audits = {}
     audit_results_file = "results/audits/general_audit_results.json"
-    if os.path.exists(audit_results_file):
-        try:
-            with open(audit_results_file, "r", encoding="utf-8") as f:
-                old_results = json.load(f)
-                existing_audits = {r["name"]: r for r in old_results if "name" in r}
-                print(f"ℹ️  Loaded {len(existing_audits)} existing audit reports.")
-        except Exception as e:
-            print(f"⚠️ Could not load existing audit results: {e}")
+    existing_audits = _load_existing_audits(audit_results_file)
 
     to_audit = []
     already_audited = []
-    
+
     for lead in leads:
         name = lead["name"]
-        report_path = f"results/reports/{name.replace(' ', '_').replace('/', '_')}_audit.txt"
+        report_path = (
+            f"results/reports/{name.replace(' ', '_').replace('/', '_')}_audit.txt"
+        )
         if name in existing_audits and os.path.exists(report_path):
             already_audited.append(existing_audits[name])
         else:
             to_audit.append(lead)
 
-    print(f"ℹ️  Leads to audit: {len(to_audit)} | Already audited (skipped): {len(already_audited)}")
+    print(
+        f"ℹ️  Leads to audit: {len(to_audit)} | Already audited (skipped): {len(already_audited)}"
+    )
     print("=" * 60)
 
     all_audit_results = list(already_audited)
@@ -1033,143 +1397,17 @@ async def audit_all_leads(leads_file: str = "results/leads/enriched_leads.json")
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             headless=False,
-            args=["--disable-blink-features=AutomationControlled", "--start-maximized"]
+            args=["--disable-blink-features=AutomationControlled", "--start-maximized"],
         )
-        context = await browser.new_context(
-            viewport={"width": 1366, "height": 768},
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            locale="en-GB",
-            timezone_id="Africa/Lagos"
-        )
-
-        # Mask automation signals with advanced stealth script
-        await context.add_init_script("""
-            // 1. Hide webdriver
-            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-            
-            // 2. Add full chrome object
-            window.chrome = {
-                app: {
-                    isInstalled: false,
-                    InstallState: { DISABLED: 'DISABLED', INSTALLED: 'INSTALLED', NOT_INSTALLED: 'NOT_INSTALLED' },
-                    RunningState: { CANNOT_RUN: 'CANNOT_RUN', RUNNING: 'RUNNING', CAN_RUN: 'CAN_RUN' }
-                },
-                csi: () => {},
-                loadTimes: () => {},
-                runtime: {
-                    OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' },
-                    OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },
-                    PlatformArch: { ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
-                    PlatformNaclArch: { ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
-                    PlatformOs: { ANDROID: 'android', CROS: 'cros', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win' },
-                    RequestUpdateCheckStatus: { NO_UPDATE: 'no_update', THROTTLED: 'throttled', UPDATE_AVAILABLE: 'update_available' }
-                }
-            };
-
-            // 3. Spoof plugins
-            Object.defineProperty(navigator, 'plugins', {
-                get: () => [
-                    { description: "Portable Document Format", filename: "internal-pdf-viewer", name: "Chrome PDF Viewer" },
-                    { description: "", filename: "mhjfbmdgcfjbbpaeojofohoefgieoano", name: "Chromium PDF Viewer" },
-                    { description: "", filename: "internal-pdf-viewer", name: "Microsoft Edge PDF Viewer" },
-                    { description: "", filename: "internal-pdf-viewer", name: "PDF Viewer" },
-                    { description: "", filename: "internal-pdf-viewer", name: "WebKit built-in PDF" }
-                ]
-            });
-
-            // 4. Spoof permissions
-            if (window.navigator.permissions) {
-                const originalQuery = window.navigator.permissions.query;
-                window.navigator.permissions.query = (parameters) => (
-                    parameters.name === 'notifications' ?
-                        Promise.resolve({ state: Notification.permission }) :
-                        originalQuery(parameters)
-                );
-            }
-
-            // 5. Hardware concurrency and memory
-            Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
-            Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
-        """)
+        context = await _setup_stealth_context(browser)
         page = await context.new_page()
 
         for i, lead in enumerate(to_audit, 1):
-            name = lead["name"]
-            website_url = lead.get("official_website", {}).get("url")
-
-            print(f"\n{'='*60}")
-            print(f"{Symbol.SEARCH}¬ [{i}/{len(to_audit)}] Auditing: {name}")
-            print(f"{'='*60}")
-
-            audits = {}
-
-            # 1. Website
-            print(f"\n   {Symbol.WORLD} Website Audit...")
-            audits["website"] = await audit_website(page, website_url, name)
-            print(f"      Grade: {audits['website']['grade']} | Issues: {len(audits['website']['issues'])}")
-            await human_pause(3.0, 5.0)
-
-            # 2. Google Business
-            print(f"\n   {Symbol.MAPS} Google Business Profile Audit...")
-            audits["google_business"] = await audit_google_business(page, name, lead.get("city", "Abuja"))
-            print(f"      Grade: {audits['google_business']['grade']} | Rating: {audits['google_business'].get('rating')}")
-            await human_pause(3.0, 5.0)
-
-            # 3. Social Media
-            print(f"\n   {Symbol.SOCIAL} Social Media Audit...")
-            audits["social"] = await audit_social_media(lead)
-            print(f"      Grade: {audits['social']['grade']} | IG: {audits['social']['instagram']['found']} | FB: {audits['social']['facebook']['found']}")
-            await human_pause(2.0, 3.0)
-
-            # 4. Reputation Audit
-            print(f"\n   {Symbol.TARGET} Reputation Audit...")
-            audits["reputation"] = await audit_reputation(lead)
-            print(f"      Grade: {audits['reputation']['grade']} | Rating: {audits['reputation'].get('overall_rating')}")
-            await human_pause(2.0, 3.0)
-
-            # 5. SEO
-            print(f"\n   {Symbol.SEARCH}  SEO Audit...")
-            audits["seo"] = await audit_seo(page, name, lead.get("city", "Abuja"), website_url)
-            print(f"      Grade: {audits['seo']['grade']} | Local pack: {audits['seo']['ranks_in_local_pack']}")
-            await human_pause(3.0, 5.0)
-
-            # 6. WhatsApp
-            print(f"\n   {Symbol.WHATSAPP} WhatsApp Audit...")
-            audits["whatsapp"] = audit_whatsapp(lead)
-            print(f"      Grade: {audits['whatsapp']['grade']} | Has WA: {audits['whatsapp']['has_whatsapp']}")
-
-            # 7. Competitor Gap
-            print(f"\n   ðŸ† Competitor Gap Audit...")
-            audits["competitor_gap"] = audit_competitor_gap(lead, audits["website"], audits["social"])
-            print(f"      Grade: {audits['competitor_gap']['grade']} | Threats: {len(audits['competitor_gap']['urgent_threats'])}")
-
-            # 8. Revenue Opportunity
-            print(f"\n   ðŸ’° Revenue Opportunity...")
-            revenue = calculate_revenue_opportunity(lead, audits)
-            print(f"      Monthly opportunity: â‚¦{revenue['monthly_lost_naira']:,}")
-
-            # 9. Report Card
-            print(f"\n   {Symbol.LIST} Generating Report Card...")
-            report_card = generate_report_card(lead, audits, revenue)
-            print(report_card)
-
-            # Save individual report
-            report_path = f"results/reports/{name.replace(' ', '_').replace('/', '_')}_audit.txt"
-            with open(report_path, "w", encoding="utf-8") as f:
-                f.write(report_card)
-
-            audit_result = {
-                "name": name,
-                "website": website_url,
-                "audits": audits,
-                "revenue_opportunity": revenue,
-                "report_card_path": report_path,
-                "audited_at": datetime.now().isoformat()
-            }
+            audit_result = await _audit_single_lead(page, lead, i, len(to_audit))
             all_audit_results.append(audit_result)
 
             rest = random.uniform(8.0, 12.0)
-            print(f"\n   â³ Resting {rest:.0f}s before next lead...")
+            print(f"\n   ⏳ Resting {rest:.0f}s before next lead...")
             await asyncio.sleep(rest)
 
         await browser.close()
@@ -1187,11 +1425,10 @@ async def audit_all_leads(leads_file: str = "results/leads/enriched_leads.json")
     print(f"Full data saved to:      results/audits/general_audit_results.json")
 
     total_opportunity = sum(
-        r["revenue_opportunity"]["monthly_lost_naira"]
-        for r in all_audit_results
+        r["revenue_opportunity"]["monthly_lost_naira"] for r in all_audit_results
     )
     print(f"\nTotal revenue opportunity across all leads:")
-    print(f"â‚¦{total_opportunity:,}/month")
+    print(f"₦{total_opportunity:,}/month")
     print("=" * 60)
 
 
