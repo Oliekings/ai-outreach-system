@@ -1,5 +1,8 @@
 # AI Outreach System
 
+![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+
 An autonomous lead generation and multi-channel outreach system designed for Nigerian businesses. This system finds leads on Google Maps, enriches them with contact details (email, WhatsApp, Instagram, Facebook), audits their digital presence, and writes personalized, AI-driven outreach messages.
 
 The system is organized into a **5-Layer Modular Architecture** for intelligence, outreach, response management, scaling, and autonomous decision-making.
@@ -41,6 +44,13 @@ The system is organized into a **5-Layer Modular Architecture** for intelligence
 ### 5. Scale
 - Niche and city management to scale outreach across regions effectively.
 - **Strategy Safety**: Preserves locked manual limits when migrating to new cities or recommending optimized limits.
+
+
+### 6. Interactive Dashboard
+- **Visual Management Interface**: An elegant web dashboard served via a Flask backend.
+- **Pipeline Overview**: Monitor lead backlog, active outreaches, and reply statuses in real-time.
+- **Manual Overrides**: Conveniently review pending AI CEO tasks and dispatch messages manually if preferred.
+- **System Config Editor**: Directly edit `ceo_config.json` settings from within the secure dashboard interface.
 
 ---
 
@@ -144,19 +154,39 @@ python -X utf8 -m response_management.reply_monitor
 
 ---
 
+
+### Approach C: Interactive Dashboard
+For users who prefer a graphical interface to view metrics, approve replies, and tweak settings.
+
+```bash
+# Start the dashboard backend server
+python -X utf8 dashboard_server.py
+```
+*What it does: Boots up a local Flask server (default port 5055) which hosts the frontend UI and provides authenticated API routes to manage the AI Outreach System visually.*
+
+
 ## 📂 Project Structure
 
-- `intelligence/`: Discovery and research scripts.
-- `outreach/`: Message generation and sending logic.
-- `response_management/`: Inbox monitoring and reply handling.
-- `ai_ceo/`: Autonomous scheduling, reviewing, and decision engine.
-- `scale/`: Campaign and niche scaling logic.
-- `ceo_config.json`: Global settings and business logic.
-- `results/`: Output directory (excluded from Git).
+```text
+ai-outreach/
+├── ai_ceo/               # Autonomous scheduling, reviewing, and decision engine
+├── dashboard/            # Frontend assets for the interactive web UI
+├── intelligence/         # Discovery, auditing, and research scripts
+├── outreach/             # Message generation and multi-channel sending logic
+├── response_management/  # Inbox monitoring and intelligent reply handling
+├── scale/                # Campaign, city, and niche scaling logic
+├── tests/                # Automated test suite (pytest)
+├── utils/                # Shared utilities and helpers
+├── dashboard_server.py   # Flask backend for the interactive dashboard
+├── ceo_config.json       # Global settings and business logic configuration
+├── .env                  # Secrets and API Keys (not tracked)
+└── results/              # Outputs: leads, drafted messages, logs (ignored by git)
+```
 
 ## 🛡️ Security
 - **Never commit your `.env` or `ceo_config.json` files.**
 - Sensitive results, lead data, and drafted messages are securely stored in the local `results/` folder, which is ignored by Git.
+- **Dashboard Authentication:** The Flask backend (`dashboard_server.py`) uses `DASHBOARD_AUTH_KEY` to secure API endpoints, ensuring only authorized local requests can mutate the system state.
 
 ## 📄 License
 MIT
