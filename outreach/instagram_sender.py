@@ -8,17 +8,19 @@ from datetime import datetime
 from playwright.async_api import async_playwright
 from dotenv import load_dotenv
 
-if sys.platform == 'win32':
+if sys.platform == "win32":
     try:
-        sys.stdout.reconfigure(encoding='utf-8')
-        sys.stderr.reconfigure(encoding='utf-8')
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
     except AttributeError:
         pass
 
 load_dotenv()
 import pathlib
+
 # Ensure project root is on sys.path so 'from outreach.x import ...' always works
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+from utils.browser import handle_consent
 
 os.makedirs("results/sent/instagram", exist_ok=True)
 os.makedirs("results/logs", exist_ok=True)
@@ -56,22 +58,28 @@ def already_sent_ig(log: dict, profile_url: str, business: str, msg_key: str) ->
         except:
             entry_idx = 0
 
-        if (entry_business.lower().strip() == business.lower().strip() and
-                entry_idx >= curr_idx and
-                entry.get("success")):
+        if (
+            entry_business.lower().strip() == business.lower().strip()
+            and entry_idx >= curr_idx
+            and entry.get("success")
+        ):
             return True
-            
+
         # Also check profile URL if matching specific profile/page target
-        if entry.get("profile") == profile_url and entry.get("success") and entry_idx >= curr_idx:
+        if (
+            entry.get("profile") == profile_url
+            and entry.get("success")
+            and entry_idx >= curr_idx
+        ):
             return True
     return False
-
 
 
 def get_todays_ig_count(log: dict) -> int:
     today = datetime.now().strftime("%Y-%m-%d")
     return sum(
-        1 for e in log["messages"]
+        1
+        for e in log["messages"]
         if e.get("date", "").startswith(today) and e.get("success")
     )
 
@@ -87,29 +95,12 @@ async def human_type(element, text: str):
     await human_pause(0.5, 1.5)
 
 
-async def handle_consent(page):
-    for sel in [
-        'button:has-text("Allow all cookies")',
-        'button:has-text("Accept All")',
-        'button:has-text("Allow essential and optional cookies")',
-        '[data-testid="cookie-policy-manage-dialog-accept-button"]',
-    ]:
-        try:
-            btn = await page.query_selector(sel)
-            if btn:
-                await asyncio.sleep(random.uniform(0.8, 1.8))
-                await btn.click()
-                await asyncio.sleep(random.uniform(1.0, 2.0))
-                return True
-        except:
-            continue
-    return False
-
-
 async def ensure_ig_session(page) -> bool:
     """Ensure Instagram is logged in"""
     print("   📸 Loading Instagram...")
-    await page.goto("https://www.instagram.com", timeout=30000, wait_until="domcontentloaded")
+    await page.goto(
+        "https://www.instagram.com", timeout=30000, wait_until="domcontentloaded"
+    )
     await human_pause(3.0, 5.0)
     await handle_consent(page)
     await human_pause(2.0, 4.0)
@@ -159,21 +150,18 @@ async def ensure_ig_session(page) -> bool:
 
 
 async def send_instagram_dm(
-    page,
-    profile_url: str,
-    message: str,
-    business_name: str
+    page, profile_url: str, message: str, business_name: str
 ) -> dict:
     result = {
         "success": False,
         "profile": profile_url,
         "business": business_name,
-        "error": None
+        "error": None,
     }
 
     try:
         # Clean profile URL
-        ig_match = re.search(r'instagram\.com/([a-zA-Z0-9._]+)', profile_url)
+        ig_match = re.search(r"instagram\.com/([a-zA-Z0-9._]+)", profile_url)
         if not ig_match:
             result["error"] = "Invalid Instagram URL"
             return result
@@ -181,7 +169,7 @@ async def send_instagram_dm(
         username = ig_match.group(1)
 
         # Remove trailing path fragments
-        for skip in ['reels', 'posts', 'tagged', 'tv', 'reel']:
+        for skip in ["reels", "posts", "tagged", "tv", "reel"]:
             if username == skip:
                 result["error"] = "Not a profile URL"
                 return result
@@ -192,7 +180,7 @@ async def send_instagram_dm(
         await page.goto(
             f"https://www.instagram.com/{username}/",
             timeout=20000,
-            wait_until="domcontentloaded"
+            wait_until="domcontentloaded",
         )
         await handle_consent(page)
         await human_pause(3.0, 6.0)
@@ -351,7 +339,9 @@ def get_next_ig_message(lead_name: str, log: dict) -> tuple:
     return "complete", None
 
 
-async def send_all_instagram(dry_run: bool = False, force: bool = False, ignore_timing: bool = False):
+async def send_all_instagram(
+    dry_run: bool = False, force: bool = False, ignore_timing: bool = False
+):
     config = load_config()
     log = load_ig_log()
     daily_limit = config["outreach"]["daily_instagram_limit"]
@@ -365,7 +355,8 @@ async def send_all_instagram(dry_run: bool = False, force: bool = False, ignore_
         leads = json.load(f)
 
     leads_with_ig = [
-        l for l in leads
+        l
+        for l in leads
         if l.get("instagram", {}).get("found") and l.get("instagram", {}).get("url")
     ]
 
@@ -395,7 +386,10 @@ async def send_all_instagram(dry_run: bool = False, force: bool = False, ignore_
             print(f"     Profile: {msg_data.get('to', '')}")
             print(f"     Key: {msg_key}")
             from outreach.message_writer import clean_message_content
-            print(f"     Message: {clean_message_content(msg_data.get('message', ''), default_option=3)[:100]}...")
+
+            print(
+                f"     Message: {clean_message_content(msg_data.get('message', ''), default_option=3)[:100]}..."
+            )
             print()
         return
 
@@ -444,13 +438,13 @@ async def send_all_instagram(dry_run: bool = False, force: bool = False, ignore_
 
             profile_url = msg_data.get("to", "")
             from outreach.message_writer import clean_message_content
-            message = clean_message_content(msg_data.get("message", ""), default_option=3)
+
+            message = clean_message_content(
+                msg_data.get("message", ""), default_option=3
+            )
 
             send_result = await send_instagram_dm(
-                page=page,
-                profile_url=profile_url,
-                message=message,
-                business_name=name
+                page=page, profile_url=profile_url, message=message, business_name=name
             )
 
             log_entry = {
@@ -461,7 +455,7 @@ async def send_all_instagram(dry_run: bool = False, force: bool = False, ignore_
                 "message": message,  # SAVE FULL MESSAGE TEXT
                 "date": datetime.now().isoformat(),
                 "success": send_result["success"],
-                "error": send_result.get("error")
+                "error": send_result.get("error"),
             }
             log["messages"].append(log_entry)
 
@@ -493,7 +487,10 @@ async def send_all_instagram(dry_run: bool = False, force: bool = False, ignore_
 
 if __name__ == "__main__":
     import sys
+
     dry_run = "--dry-run" in sys.argv
     force = "--force" in sys.argv
     ignore_timing = "--ignore-timing" in sys.argv
-    asyncio.run(send_all_instagram(dry_run=dry_run, force=force, ignore_timing=ignore_timing))
+    asyncio.run(
+        send_all_instagram(dry_run=dry_run, force=force, ignore_timing=ignore_timing)
+    )
