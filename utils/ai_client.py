@@ -24,20 +24,17 @@ load_dotenv()
 # ─────────────────────────────────────────────────────────────────────────────
 TASK_TIERS = {
     # Tier 1: Fast/cheap — classification, verification, short extraction
-    "classify":  {"max_tokens": 500},
-    "verify":    {"max_tokens": 500},
-
+    "classify": {"max_tokens": 500},
+    "verify": {"max_tokens": 500},
     # Tier 2: Standard — auditing, enrichment, reply drafting
-    "audit":     {"max_tokens": 1500},
-    "enrich":    {"max_tokens": 800},
-    "reply":     {"max_tokens": 600},
-
+    "audit": {"max_tokens": 1500},
+    "enrich": {"max_tokens": 800},
+    "reply": {"max_tokens": 600},
     # Tier 3: Quality — message writing, decisions
-    "generate":  {"max_tokens": 1500},
-    "decide":    {"max_tokens": 1500},
-
+    "generate": {"max_tokens": 1500},
+    "decide": {"max_tokens": 1500},
     # Tier 4: Creative — site building, complex content (high token limit)
-    "creative":  {"max_tokens": 4000},
+    "creative": {"max_tokens": 4000},
 }
 
 # Models
@@ -57,7 +54,7 @@ def ai_response(
     task: str = "generate",
     max_tokens: int = None,
     retry: int = 2,
-    prefer_free: bool = False
+    prefer_free: bool = False,
 ) -> str:
     """
     Get an AI response with automatic model selection and fallback.
@@ -91,18 +88,20 @@ def _try_claude_then_groq(prompt: str, max_tokens: int, retry: int) -> str:
             return text
         except Exception as e:
             error = str(e).lower()
-            if "rate" in error or "limit" in error:
-                wait = (attempt + 1) * 15
-                print(f"   ⏳ Claude rate limited — waiting {wait}s...")
-                time.sleep(wait)
-                continue
 
-            # Non-rate-limit error → try Groq fallback
+            # Always try Groq fallback immediately on any Claude error (including rate limits)
             text = _try_groq_chain(prompt, max_tokens)
             if text:
                 return text
 
-            # If Groq also failed and we have retries left, wait and retry
+            # If Groq also fails and it was a rate limit, wait before retrying Claude
+            if "rate" in error or "limit" in error:
+                wait = (attempt + 1) * 15
+                print(f"   ⏳ Claude rate limited and Groq failed — waiting {wait}s...")
+                time.sleep(wait)
+                continue
+
+            # If Groq failed on a non-rate-limit error and we have retries left, wait and retry
             if attempt < retry - 1:
                 wait = (attempt + 1) * 10
                 time.sleep(wait)
@@ -154,7 +153,7 @@ def _call_claude(prompt: str, max_tokens: int) -> str:
     response = client.messages.create(
         model=CLAUDE_MODEL,
         max_tokens=max_tokens,
-        messages=[{"role": "user", "content": prompt}]
+        messages=[{"role": "user", "content": prompt}],
     )
     return response.content[0].text
 
@@ -178,7 +177,7 @@ def _try_groq_chain(prompt: str, max_tokens: int) -> str:
                 response = client.chat.completions.create(
                     model=model_name,
                     max_tokens=max_tokens,
-                    messages=[{"role": "user", "content": prompt}]
+                    messages=[{"role": "user", "content": prompt}],
                 )
                 _log_usage("groq", model_name, max_tokens)
                 return response.choices[0].message.content
@@ -226,11 +225,11 @@ def _log_usage(provider: str, model: str, max_tokens: int):
 def safe_json(text: str) -> dict:
     """Parse AI response text that may contain markdown-wrapped JSON."""
     try:
-        clean = re.sub(r'```json|```', '', text).strip()
-        start = clean.find('{')
-        end = clean.rfind('}')
+        clean = re.sub(r"```json|```", "", text).strip()
+        start = clean.find("{")
+        end = clean.rfind("}")
         if start != -1 and end != -1:
-            return json.loads(clean[start:end+1])
+            return json.loads(clean[start : end + 1])
     except Exception:
         pass
     return {}
