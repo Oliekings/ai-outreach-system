@@ -91,6 +91,25 @@ def load_json(path: str, default=None):
     return default
 
 
+
+_ceo_config_cache = None
+_ceo_config_mtime = 0
+
+def get_cached_ceo_config():
+    global _ceo_config_cache, _ceo_config_mtime
+    path = "ceo_config.json"
+    if not os.path.exists(path):
+        return {}
+
+    try:
+        current_mtime = os.path.getmtime(path)
+        if _ceo_config_cache is None or current_mtime > _ceo_config_mtime:
+            _ceo_config_cache = load_json(path, {})
+            _ceo_config_mtime = current_mtime
+        return _ceo_config_cache
+    except Exception:
+        return load_json(path, {})
+
 def latest_file(directory: str, prefix: str) -> dict:
     if not os.path.exists(directory):
         return {}
@@ -197,7 +216,7 @@ def handle_config():
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
     
-    return jsonify(load_json("ceo_config.json", {}))
+    return jsonify(get_cached_ceo_config())
 
 
 @app.route('/api/env', methods=['GET', 'POST'])
@@ -435,7 +454,7 @@ def get_expansion():
     try:
         sys.path.insert(0, os.getcwd())
         from scale.city_manager import get_expansion_roadmap
-        config = load_json("ceo_config.json", {})
+        config = get_cached_ceo_config()
         cities = config.get("outreach", {}).get("cities", ["Uromi"])
         current_city = cities[0] if cities else "Uromi"
         return jsonify(get_expansion_roadmap(current_city))
