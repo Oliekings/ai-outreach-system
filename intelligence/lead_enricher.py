@@ -8,6 +8,7 @@ from datetime import datetime
 from playwright.async_api import async_playwright
 from dotenv import load_dotenv
 from groq import Groq
+import urllib.request
 from anthropic import Anthropic
 
 # Add project root to path for robust imports
@@ -342,7 +343,7 @@ def classify_domain(url: str, business_name: str) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 # SMART SEARCH ENGINE — Google first, intelligent fallback chain
 # ─────────────────────────────────────────────────────────────────────────────
-import urllib.request
+
 import time
 
 # Track Google block status per session
