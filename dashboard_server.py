@@ -56,8 +56,8 @@ def login():
     key = data.get('key', '')
     if key == DASHBOARD_AUTH_KEY:
         response = jsonify({'success': True, 'message': 'Authenticated'})
-        # Set cookie accessible by JS to keep login persistent, Lax samesite
-        response.set_cookie('dashboard_auth', key, max_age=86400*30, httponly=False, samesite='Lax')
+        # Set cookie to keep login persistent, Lax samesite
+        response.set_cookie('dashboard_auth', key, max_age=86400*30, httponly=True, samesite='Lax')
         return response
     return jsonify({'success': False, 'error': 'Invalid key'}), 401
 
