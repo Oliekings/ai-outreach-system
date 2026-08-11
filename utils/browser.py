@@ -28,8 +28,7 @@ async def human_type(element, text: str):
         await asyncio.sleep(random.uniform(0.03, 0.15))
     await human_pause(0.5, 1.5)
 
-
-async def handle_consent(page):
+async def handle_consent(page, fast_mode: bool = False):
     """Attempt to find and click common cookie consent buttons."""
     selectors = [
         'button[aria-label="Accept all"]',
@@ -51,7 +50,10 @@ async def handle_consent(page):
             btn = await page.query_selector(sel)
             if btn:
                 await btn.click()
-                await human_pause(1.0, 2.0)
+                if fast_mode:
+                    await asyncio.sleep(random.uniform(0.3, 0.7))
+                else:
+                    await human_pause(1.0, 2.0)
                 return True
         except Exception:
             continue
