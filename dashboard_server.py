@@ -14,6 +14,7 @@ app = Flask(__name__, static_folder=os.path.join(os.getcwd(), 'dashboard'), stat
 CORS(app, supports_credentials=True)
 
 import secrets
+import hmac
 
 DASHBOARD_AUTH_KEY = os.getenv("DASHBOARD_AUTH_KEY", "")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", secrets.token_hex(32))
@@ -36,15 +37,15 @@ def check_auth():
         
     # Check Authorization header (Bearer token)
     auth_header = request.headers.get('Authorization', '')
-    if auth_header.startswith('Bearer ') and auth_header[7:] == DASHBOARD_AUTH_KEY:
+    if auth_header.startswith('Bearer ') and hmac.compare_digest(auth_header[7:], DASHBOARD_AUTH_KEY):
         return
         
     # Check query param
-    if request.args.get('auth_key') == DASHBOARD_AUTH_KEY:
+    if hmac.compare_digest(request.args.get('auth_key', ''), DASHBOARD_AUTH_KEY):
         return
         
     # Check session cookie
-    if request.cookies.get('dashboard_auth') == DASHBOARD_AUTH_KEY:
+    if hmac.compare_digest(request.cookies.get('dashboard_auth', ''), DASHBOARD_AUTH_KEY):
         return
         
     return jsonify({'error': 'Unauthorized', 'message': 'Please provide auth key'}), 401
@@ -54,7 +55,9 @@ def check_auth():
 def login():
     data = request.json or {}
     key = data.get('key', '')
-    if key == DASHBOARD_AUTH_KEY:
+    if not isinstance(key, str):
+        key = str(key)
+    if hmac.compare_digest(key, DASHBOARD_AUTH_KEY):
         response = jsonify({'success': True, 'message': 'Authenticated'})
         # Set cookie to keep login persistent, Lax samesite
         response.set_cookie('dashboard_auth', key, max_age=86400*30, httponly=True, samesite='Lax')
