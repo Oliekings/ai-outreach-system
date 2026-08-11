@@ -44,10 +44,10 @@ IGNORE_DOMAINS = {
 
 def is_system_email(from_email: str) -> bool:
     """Check if an email is from a system/notification sender (not a lead)."""
-    if not from_email:
+    if not from_email or not from_email.strip():
         return True
     email_lower = from_email.lower().strip()
-    local_part = email_lower.split("@")[0] if "@" in email_lower else ""
+    local_part = email_lower.split("@")[0] if "@" in email_lower else email_lower
     if any(prefix in local_part for prefix in IGNORE_SENDERS):
         return True
     domain = email_lower.split("@")[1] if "@" in email_lower else ""
