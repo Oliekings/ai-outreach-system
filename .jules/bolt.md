@@ -1,0 +1,3 @@
+## 2025-03-01 - Optimizing Data Processing in JSON-File-Based Architecture
+**Learning:** In the current system architecture, which heavily relies on reading and writing JSON files (e.g., `results/leads/enriched_leads.json`), making multiple consecutive passes over these large parsed datasets (e.g., via list comprehensions) is a significant and unnecessary bottleneck. This codebase pattern frequently loops through the same list to calculate multiple metrics, leading to O(N * M) time complexity where M is the number of metrics.
+**Action:** When calculating metrics or aggregating data from large JSON datasets, consolidate all calculations into a single O(N) iteration instead of using multiple list comprehensions. This improves execution speed and lowers memory overhead.
