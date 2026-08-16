@@ -1,0 +1,3 @@
+## 2024-08-16 - Missing aria-label & title on Icon-only Buttons
+**Learning:** Found a recurring pattern in the Vue application where icon-only buttons (such as run task, close modal, dry run, and launch city buttons) were missing essential accessibility attributes, particularly `aria-label` and `title`. This makes the application harder to use for screen reader users, and harder to navigate for sighted users who rely on hover tooltips to understand functionality.
+**Action:** Always ensure that icon-only buttons include both an `aria-label` and a `title` attribute for optimal usability and accessibility across all user types.
