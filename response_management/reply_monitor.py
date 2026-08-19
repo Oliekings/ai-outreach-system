@@ -78,14 +78,14 @@ def already_processed(log: dict, message_id: str) -> bool:
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # LEAD FINDER â€” match reply to a lead
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-def find_lead_by_email(email_address: str) -> dict:
-    """Find which lead sent this reply"""
-    enriched_file = "results/leads/enriched_leads.json"
-    if not os.path.exists(enriched_file):
-        return {}
-
-    with open(enriched_file, "r", encoding="utf-8") as f:
-        leads = json.load(f)
+def find_lead_by_email(email_address: str, leads: list = None) -> dict:
+    """Find which lead sent this reply. Memory-optimized to prevent disk I/O in loops."""
+    if leads is None:
+        enriched_file = "results/leads/enriched_leads.json"
+        if not os.path.exists(enriched_file):
+            return {}
+        with open(enriched_file, "r", encoding="utf-8") as f:
+            leads = json.load(f)
 
     email_lower = email_address.lower().strip()
     for lead in leads:
@@ -518,7 +518,8 @@ def process_replies(replies: list, dry_run: bool = False) -> dict:
         print(f"   Subject: {subject[:60]}")
 
         # Find matching lead
-        lead = find_lead_by_email(from_email)
+        # ⚡ Optimization: Pass loaded all_leads to prevent repetitive disk I/O
+        lead = find_lead_by_email(from_email, all_leads)
         if not lead:
             lead = find_lead_by_phone(from_email, all_leads)
         if not lead:
