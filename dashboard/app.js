@@ -215,6 +215,7 @@ const OverviewPage = {
                             <div class="task-command">{{ task.command }}</div>
                         </div>
                         <button class="btn btn-ghost text-xs"
+                                aria-label="Run task" title="Run task"
                                 style="padding: 0.3rem 0.6rem;">▶</button>
                     </div>
                 </div>
@@ -745,7 +746,7 @@ const LeadsPage = {
                     <div class="flex gap-2">
                         <button v-if="!isEditing" class="btn btn-ghost btn-sm" @click="startEditing">✏️ Edit</button>
                         <button v-else class="btn btn-success btn-sm" @click="saveLead">💾 Save</button>
-                        <button class="btn btn-ghost" @click="closeModal">✕</button>
+                        <button class="btn btn-ghost" aria-label="Close modal" title="Close modal" @click="closeModal">✕</button>
                     </div>
                 </div>
                 <div class="modal-body scrollable">
@@ -1296,6 +1297,7 @@ const OutreachPage = {
                         {{ ch.remaining === 0 ? '✅ Limit Reached' : '▶ Send Now' }}
                     </button>
                     <button class="btn btn-ghost"
+                            aria-label="Dry run" title="Dry run"
                             @click="triggerChannel(ch.command + ' --dry-run')"
                             :disabled="loading">
                         🔍
@@ -1436,7 +1438,7 @@ const OutreachPage = {
             <div class="card" style="width: 100%; max-width: 550px; padding: 1.5rem; margin: auto; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
                 <div class="flex justify-between items-center mb-3" style="border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
                     <span style="font-size: 0.95rem; font-weight: 700; color: var(--primary-light);">Edit Crafted Message — Day {{ editingMsg.day }} ({{ editingMsg.channel }})</span>
-                    <button class="btn btn-ghost" style="padding: 0.2rem 0.5rem;" @click="showEditModal = false">✕</button>
+                    <button class="btn btn-ghost" aria-label="Close edit modal" title="Close edit modal" style="padding: 0.2rem 0.5rem;" @click="showEditModal = false">✕</button>
                 </div>
                 
                 <div class="mb-3" v-if="editingMsg.subject !== undefined">
@@ -2323,7 +2325,7 @@ const ScalePage = {
                             <div class="text-sm font-bold">{{ city.city }} <span class="text-xs text-dim">({{ city.state }})</span></div>
                             <div class="text-xs text-muted">{{ city.why }}</div>
                         </div>
-                        <button class="btn btn-ghost p-2" @click="launchCity(city.city)" title="Launch in this city">🚀</button>
+                        <button class="btn btn-ghost p-2" aria-label="Launch in this city" @click="launchCity(city.city)" title="Launch in this city">🚀</button>
                     </div>
                 </div>
                 <div class="empty" v-else>
@@ -2636,7 +2638,7 @@ const App = {
         <main class="main">
             <div class="topbar">
                 <div class="topbar-left" style="display: flex; align-items: center;">
-                    <button class="hamburger-btn" @click="toggleMobileMenu" aria-label="Toggle menu">
+                    <button class="hamburger-btn" @click="toggleMobileMenu" aria-label="Toggle menu" title="Toggle menu">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="3" y1="12" x2="21" y2="12"></line>
                             <line x1="3" y1="6" x2="21" y2="6"></line>
