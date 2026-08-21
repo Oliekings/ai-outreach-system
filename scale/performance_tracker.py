@@ -125,41 +125,49 @@ def calculate_lead_metrics(data: dict) -> dict:
         leads = []
 
     total = len(leads)
-    enriched = len([l for l in leads if l.get("enriched")])
-    with_email = len([l for l in leads if l.get("contact_email")])
-    with_wa = len([l for l in leads if l.get("contact_whatsapp")])
-    with_ig = len([l for l in leads if l.get("instagram", {}).get("found")])
-    with_fb = len([l for l in leads if l.get("facebook", {}).get("found")])
-    site_built = len([l for l in leads if l.get("site_built")])
 
-    # By status
+    enriched = 0
+    with_email = 0
+    with_wa = 0
+    with_ig = 0
+    with_fb = 0
+    site_built = 0
+
     by_status = {}
-    for lead in leads:
-        status = lead.get("status", "active")
+    by_niche = {}
+    by_city = {}
+
+    total_score = 0
+    score_count = 0
+
+    # ⚡ Bolt: Merged 10 separate passes over 'leads' into a single O(N) loop
+    # to reduce CPU cycles and prevent intermediate list memory allocation.
+    for l in leads:
+        if l.get("enriched"): enriched += 1
+        if l.get("contact_email"): with_email += 1
+        if l.get("contact_whatsapp"): with_wa += 1
+        if l.get("instagram", {}).get("found"): with_ig += 1
+        if l.get("facebook", {}).get("found"): with_fb += 1
+        if l.get("site_built"): site_built += 1
+
+        status = l.get("status", "active")
         by_status[status] = by_status.get(status, 0) + 1
 
-    # By niche
-    by_niche = {}
-    for lead in leads:
-        niche = lead.get("niche", "unknown")
+        niche = l.get("niche", "unknown")
         by_niche[niche] = by_niche.get(niche, 0) + 1
 
-    # By city
-    by_city = {}
-    for lead in leads:
-        city = lead.get("city", "unknown")
+        city = l.get("city", "unknown")
         by_city[city] = by_city.get(city, 0) + 1
 
-    # Enrichment score distribution
-    scores = []
-    for lead in leads:
-        score_str = lead.get("enrichment_score", "0/8")
-        try:
-            scores.append(int(score_str.split("/")[0]))
-        except:
-            scores.append(0)
+        score_str = l.get("enrichment_score", "0/8")
+        if score_str:
+            try:
+                total_score += int(score_str.split("/")[0])
+            except:
+                pass
+        score_count += 1
 
-    avg_score = round(sum(scores) / max(len(scores), 1), 1)
+    avg_score = round(total_score / max(score_count, 1), 1)
 
     return {
         "total": total,

@@ -1,0 +1,3 @@
+## 2025-02-14 - JSON Store Metrics Loop Fusion
+**Learning:** The system's architecture relies on a flat file-based JSON store, meaning large lists of leads are loaded entirely into memory. Previous implementations used 10+ consecutive list comprehensions and loops (e.g., `len([l for l in leads if l.get(...)])`), which caused unnecessary O(N * 10) iterations and massive memory overhead from intermediate list creation.
+**Action:** Always apply loop fusion to aggregate metrics. Merge multiple sequential passes over a large dataset into a single O(N) loop to drastically reduce CPU cycles and intermediate memory allocation.
