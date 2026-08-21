@@ -1,0 +1,3 @@
+## 2024-10-24 - Icon-Only Button Accessibility Pattern
+**Learning:** Found that this application's custom UI patterns often omitted `aria-label` and `title` attributes on icon-only buttons (like ✕, ▶, 🚀, 🔍). These micro-interactions lacked necessary context for screen readers and tooltips, which degrades accessibility in the dashboard UI.
+**Action:** Always ensure that icon-only interactive elements contain both an `aria-label` (for screen readers) and a `title` (for visual hover tooltips) to maintain a fully accessible and intuitive interface.
