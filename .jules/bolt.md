@@ -1,0 +1,3 @@
+## 2025-02-28 - Loop Fusion for File-based JSON Stores
+**Learning:** This system architecture leverages flat, file-based JSON storage heavily. As a result, calculating aggregated metrics and filtering leads directly via standard list comprehensions can cause severe CPU bottlenecks and excess memory allocations. Multiple sequential iterations and array instantiations on potentially large JSON lists dramatically slow down metric calculations.
+**Action:** Always replace sequential O(N) list comprehensions/filters with single-pass loop fusions when aggregating or transforming data loaded directly from the flat JSON store in this architecture. Consolidate multiple logic paths inside a single `for item in items` loop.
